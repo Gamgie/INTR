@@ -1,4 +1,5 @@
-import adapter from '@sveltejs/adapter-node';
+import nodeAdapter from '@sveltejs/adapter-node';
+import vercelAdapter from '@sveltejs/adapter-vercel';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { readFileSync } from 'node:fs';
 import { defineConfig } from 'vite';
@@ -27,7 +28,11 @@ export default defineConfig({
 			},
 
 			// Set BASE_PATH=/intermittens on the hosted server.
-			adapter: adapter(),
+			// On Vercel (intermittent.gamgie.com), build serverless functions in Paris;
+			// elsewhere keep the original Node server build.
+			adapter: process.env.VERCEL
+				? vercelAdapter({ runtime: 'nodejs22.x', regions: ['cdg1'], maxDuration: 300 })
+				: nodeAdapter(),
 			paths: {
 				base: basePath
 			}

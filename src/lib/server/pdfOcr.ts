@@ -1,14 +1,28 @@
 import { createRequire } from 'node:module';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 
 import { createCanvas } from '@napi-rs/canvas';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import Tesseract from 'tesseract.js';
 
 const require = createRequire(import.meta.url);
-const frenchLanguageData = require('@tesseract.js-data/fra') as {
-	code: string;
-	gzip: boolean;
-	langPath: string;
+// Locally the French model comes from node_modules. In a serverless bundle (Vercel) it may be
+// missing: Tesseract then fetches the same package version from jsDelivr and caches it in /tmp.
+function localFrenchLangPath() {
+	try {
+		return path.dirname(require.resolve('@tesseract.js-data/fra/4.0.0/fra.traineddata.gz'));
+	} catch {
+		return '';
+	}
+}
+
+const localLangPath = localFrenchLangPath();
+const frenchLanguageData = {
+	code: 'fra',
+	gzip: true,
+	langPath: localLangPath || 'https://cdn.jsdelivr.net/npm/@tesseract.js-data/fra@1.0.0/4.0.0',
+	cached: !localLangPath
 };
 
 const targetScale = 2.25;
@@ -41,7 +55,8 @@ export async function recognizePdfPages(document: PDFDocumentProxy, pageNumbers:
 	if (!pageNumbers.length) return new Map<number, string>();
 
 	const worker = await Tesseract.createWorker(frenchLanguageData.code, Tesseract.OEM.LSTM_ONLY, {
-		cacheMethod: 'none',
+		cacheMethod: frenchLanguageData.cached ? 'write' : 'none',
+		cachePath: frenchLanguageData.cached ? tmpdir() : undefined,
 		gzip: frenchLanguageData.gzip,
 		langPath: frenchLanguageData.langPath
 	});
