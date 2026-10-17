@@ -90,7 +90,7 @@ export const POST: RequestHandler = async ({ request, url }) => {
 	const safeName = sanitizeFileName(file.name || 'notification-are');
 	const storedName = `${periodId}-${safeName || 'notification-are'}`;
 
-	await writeStoredFile(storedName, buffer, file.type);
+	await writeStoredFile(storedName, buffer);
 
 	const extractedText = await extractTextFromFile(file, buffer);
 	const period = analyzeAreNotification(extractedText, {

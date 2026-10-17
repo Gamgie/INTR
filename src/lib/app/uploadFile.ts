@@ -1,8 +1,9 @@
 import { base } from '$app/paths';
 
-// Vercel refuses request bodies over 4.5 MB. Above this size, the file is first sent
-// straight to storage through a signed URL, and only its name travels in the form.
+// Vercel refuses request bodies over 4.5 MB. Bigger files are sent first in 3.5 MB chunks,
+// and only their staging id travels in the form.
 const DIRECT_LIMIT = 4 * 1024 * 1024;
+const CHUNK_SIZE = 3.5 * 1024 * 1024;
 
 export async function appendFile(body: FormData, file: File, field = 'file') {
 	if (file.size <= DIRECT_LIMIT) {
@@ -10,30 +11,21 @@ export async function appendFile(body: FormData, file: File, field = 'file') {
 		return;
 	}
 
-	const signResponse = await fetch(`${base}/api/uploads`, {
-		method: 'POST',
-		headers: { 'content-type': 'application/json' },
-		body: JSON.stringify({ fileName: file.name })
-	});
+	const stagingId = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`;
+	const parts = Math.ceil(file.size / CHUNK_SIZE);
 
-	if (signResponse.status === 404) {
-		body.set(field, file);
-		return;
+	for (let part = 0; part < parts; part += 1) {
+		const chunk = file.slice(part * CHUNK_SIZE, (part + 1) * CHUNK_SIZE);
+		const response = await fetch(`${base}/api/uploads?id=${stagingId}&part=${part}`, {
+			method: 'POST',
+			headers: { 'content-type': 'application/octet-stream' },
+			body: chunk
+		});
+		if (!response.ok) throw new Error(`Envoi du fichier impossible (${response.status}).`);
 	}
-	if (!signResponse.ok) throw new Error('Préparation de l’envoi impossible.');
 
-	const { stagedName, signedUrl } = (await signResponse.json()) as {
-		stagedName: string;
-		signedUrl: string;
-	};
-	const upload = await fetch(signedUrl, {
-		method: 'PUT',
-		headers: { 'content-type': file.type || 'application/octet-stream', 'x-upsert': 'true' },
-		body: file
-	});
-	if (!upload.ok) throw new Error(`Envoi du fichier impossible (${upload.status}).`);
-
-	body.set(`${field}StagedName`, stagedName);
+	body.set(`${field}StagingId`, stagingId);
+	body.set(`${field}Parts`, String(parts));
 	body.set(`${field}Name`, file.name);
 	body.set(`${field}Type`, file.type);
 }

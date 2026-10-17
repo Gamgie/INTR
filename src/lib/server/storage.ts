@@ -335,8 +335,8 @@ export async function mutateData(mutator: (data: AppData) => AppData | void): Pr
 	return saveData(result);
 }
 
-export async function writeStoredFile(storedName: string, buffer: Buffer, contentType?: string) {
-	await persistence().putFile(storedName, buffer, contentType);
+export async function writeStoredFile(storedName: string, buffer: Buffer) {
+	await persistence().putFile(storedName, buffer);
 }
 
 export async function readStoredFile(storedName: string) {

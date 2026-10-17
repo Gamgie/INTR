@@ -1,17 +1,21 @@
 // Persistence backends for InterMittens.
 //
 // - Local filesystem (original behaviour): data/intermittens.json + data/documents/
-// - Supabase (hosted deployment, e.g. Vercel): one JSON row in Postgres + a private Storage bucket
+// - kDrive (hosted deployment on Vercel): the same layout inside one kDrive folder
+//     <KDRIVE_FOLDER_ID>/intermittens.json
+//     <KDRIVE_FOLDER_ID>/documents/<stored files>
 //
-// The Supabase backend is selected automatically when SUPABASE_URL and SUPABASE_SECRET_KEY are set.
-// The secret key stays on the server; the browser never talks to Supabase directly.
+// kDrive is selected automatically when KDRIVE_TOKEN, KDRIVE_DRIVE_ID and KDRIVE_FOLDER_ID are set.
+// The token stays on the server; the browser never talks to kDrive directly.
+// Deleted files go to the kDrive trash, and replacing intermittens.json keeps kDrive's versions.
 
 import { mkdir, readFile, readdir, rename, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { env } from '$env/dynamic/private';
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+
+import { KdriveClient, KdriveError } from '$lib/server/kdriveClient.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 export const dataDir = path.join(root, 'data');
@@ -19,21 +23,27 @@ export const documentDir = path.join(dataDir, 'documents');
 const dataFile = path.join(dataDir, 'intermittens.json');
 const documentDirResolved = path.resolve(documentDir);
 
-const TABLE = 'intermittens_data';
-const ROW_ID = 'main';
+export const DATA_FILE_NAME = 'intermittens.json';
+export const DOCUMENTS_FOLDER_NAME = 'documents';
 
 export interface PersistenceBackend {
-	name: 'local' | 'supabase';
+	name: 'local' | 'kdrive';
 	readJson(): Promise<unknown | null>;
 	writeJson(data: unknown): Promise<void>;
-	putFile(storedName: string, buffer: Buffer, contentType?: string): Promise<void>;
+	putFile(storedName: string, buffer: Buffer): Promise<void>;
 	getFile(storedName: string): Promise<Buffer>;
 	deleteFiles(storedNames: string[]): Promise<string[]>;
 	listFiles(): Promise<string[]>;
 }
 
-function assertSafeStoredName(storedName: string) {
-	if (!storedName || storedName.includes('/') || storedName.includes('\\') || storedName.startsWith('.')) {
+export function assertSafeStoredName(storedName: string) {
+	if (
+		!storedName ||
+		storedName.length > 255 ||
+		storedName.includes('/') ||
+		storedName.includes('\\') ||
+		storedName.startsWith('.')
+	) {
 		throw new Error(`Nom de document invalide: ${storedName}`);
 	}
 	return storedName;
@@ -88,97 +98,164 @@ const localBackend: PersistenceBackend = {
 	}
 };
 
-let supabaseClient: SupabaseClient | null = null;
+// --- kDrive -------------------------------------------------------------------------------
 
-function supabase() {
-	if (!supabaseClient) {
-		supabaseClient = createClient(env.SUPABASE_URL!, env.SUPABASE_SECRET_KEY!, {
-			auth: { persistSession: false, autoRefreshToken: false }
-		});
+type KdriveState = {
+	client: KdriveClient;
+	folderId: string;
+	documentsFolderId?: number;
+	dataFileId?: number;
+	documentIds?: Map<string, number>;
+};
+
+let kdriveState: KdriveState | null = null;
+
+function kdrive(): KdriveState {
+	if (!kdriveState) {
+		kdriveState = {
+			client: new KdriveClient({ token: env.KDRIVE_TOKEN!, driveId: env.KDRIVE_DRIVE_ID! }),
+			folderId: env.KDRIVE_FOLDER_ID!.trim()
+		};
 	}
-	return supabaseClient;
+	return kdriveState;
 }
 
-function bucket() {
-	return env.SUPABASE_BUCKET?.trim() || 'documents';
+async function documentsFolderId(state: KdriveState) {
+	if (!state.documentsFolderId) {
+		const folder = await state.client.ensureDirectory(state.folderId, DOCUMENTS_FOLDER_NAME);
+		if (!folder?.id) throw new Error('Dossier documents introuvable dans kDrive.');
+		state.documentsFolderId = Number(folder.id);
+	}
+	return state.documentsFolderId;
 }
 
-const supabaseBackend: PersistenceBackend = {
-	name: 'supabase',
+// Name -> file id for the documents folder. Rebuilt from a listing when a name is unknown,
+// so files added by another instance (or by hand in kDrive) are found too.
+async function documentIds(state: KdriveState, refresh = false) {
+	if (!state.documentIds || refresh) {
+		const items = await state.client.list(await documentsFolderId(state));
+		state.documentIds = new Map(
+			items.filter((item) => item.type === 'file').map((item) => [item.name, item.id])
+		);
+	}
+	return state.documentIds;
+}
+
+async function documentId(state: KdriveState, storedName: string) {
+	return (
+		(await documentIds(state)).get(storedName) ?? (await documentIds(state, true)).get(storedName)
+	);
+}
+
+async function dataFileId(state: KdriveState, refresh = false) {
+	if (!state.dataFileId || refresh) {
+		const items = await state.client.list(state.folderId);
+		state.dataFileId = items.find((item) => item.type === 'file' && item.name === DATA_FILE_NAME)?.id;
+	}
+	return state.dataFileId;
+}
+
+const kdriveBackend: PersistenceBackend = {
+	name: 'kdrive',
 	async readJson() {
-		const { data, error } = await supabase()
-			.from(TABLE)
-			.select('data')
-			.eq('id', ROW_ID)
-			.maybeSingle();
-		if (error) throw new Error(`Lecture Supabase impossible: ${error.message}`);
-		return data?.data ?? null;
+		const state = kdrive();
+		// Always re-list: another serverless instance may have written a newer version.
+		const id = await dataFileId(state, true);
+		if (!id) return null;
+		const bytes = await state.client.download(id);
+		return JSON.parse(Buffer.from(bytes).toString('utf-8'));
 	},
-	async writeJson(payload) {
-		const { error } = await supabase()
-			.from(TABLE)
-			.upsert({ id: ROW_ID, data: payload, updated_at: new Date().toISOString() });
-		if (error) throw new Error(`Écriture Supabase impossible: ${error.message}`);
-	},
-	async putFile(storedName, buffer, contentType) {
-		const { error } = await supabase()
-			.storage.from(bucket())
-			.upload(assertSafeStoredName(storedName), buffer, {
-				contentType: contentType || 'application/octet-stream',
-				upsert: true
+	async writeJson(data) {
+		const state = kdrive();
+		const bytes = new TextEncoder().encode(`${JSON.stringify(data, null, 2)}\n`);
+		const id = await dataFileId(state);
+		try {
+			const file = id
+				? await state.client.upload({ fileId: id, data: bytes })
+				: await state.client.upload({
+						directoryId: state.folderId,
+						name: DATA_FILE_NAME,
+						data: bytes
+					});
+			if (file?.id) state.dataFileId = file.id;
+		} catch (cause) {
+			// The cached id may point to a file that was moved or deleted: retry by name once.
+			if (!(cause instanceof KdriveError) || !id) throw cause;
+			state.dataFileId = undefined;
+			const file = await state.client.upload({
+				directoryId: state.folderId,
+				name: DATA_FILE_NAME,
+				data: bytes
 			});
-		if (error) throw new Error(`Envoi du document impossible: ${error.message}`);
+			if (file?.id) state.dataFileId = file.id;
+		}
+	},
+	async putFile(storedName, buffer) {
+		const state = kdrive();
+		const name = assertSafeStoredName(storedName);
+		const file = await state.client.upload({
+			directoryId: await documentsFolderId(state),
+			name,
+			data: new Uint8Array(buffer)
+		});
+		if (file?.id) (await documentIds(state)).set(name, file.id);
 	},
 	async getFile(storedName) {
-		const { data, error } = await supabase()
-			.storage.from(bucket())
-			.download(assertSafeStoredName(storedName));
-		if (error || !data) throw new Error(`Document introuvable: ${storedName}`);
-		return Buffer.from(await data.arrayBuffer());
+		const state = kdrive();
+		const id = await documentId(state, assertSafeStoredName(storedName));
+		if (!id) throw new Error(`Document introuvable dans kDrive: ${storedName}`);
+		return Buffer.from(await state.client.download(id));
 	},
 	async deleteFiles(storedNames) {
-		if (!storedNames.length) return [];
-		const { data, error } = await supabase()
-			.storage.from(bucket())
-			.remove(storedNames.map(assertSafeStoredName));
-		if (error) throw new Error(`Suppression impossible: ${error.message}`);
-		return (data ?? []).map((item) => item.name);
+		const state = kdrive();
+		const deleted: string[] = [];
+		for (const storedName of storedNames) {
+			const id = await documentId(state, assertSafeStoredName(storedName));
+			if (!id) continue;
+			await state.client.trash(id);
+			state.documentIds?.delete(storedName);
+			deleted.push(storedName);
+		}
+		return deleted;
 	},
 	async listFiles() {
-		const names: string[] = [];
-		const pageSize = 1000;
-		for (let offset = 0; ; offset += pageSize) {
-			const { data, error } = await supabase()
-				.storage.from(bucket())
-				.list('', { limit: pageSize, offset, sortBy: { column: 'name', order: 'asc' } });
-			if (error) throw new Error(`Liste des documents impossible: ${error.message}`);
-			names.push(...(data ?? []).map((item) => item.name).filter((name) => !name.startsWith('.')));
-			if (!data || data.length < pageSize) break;
-		}
-		return names;
+		return [...(await documentIds(kdrive(), true)).keys()];
 	}
 };
 
+export function kdriveConfigured() {
+	return Boolean(
+		env.KDRIVE_TOKEN?.trim() && env.KDRIVE_DRIVE_ID?.trim() && env.KDRIVE_FOLDER_ID?.trim()
+	);
+}
+
 export function persistence(): PersistenceBackend {
-	return env.SUPABASE_URL?.trim() && env.SUPABASE_SECRET_KEY?.trim() ? supabaseBackend : localBackend;
+	return kdriveConfigured() ? kdriveBackend : localBackend;
 }
 
-// Large uploads (> Vercel's 4.5 MB request limit) go straight from the browser to Storage
-// through a one-time signed URL, under a "staging-" name, then the server takes them back.
+// --- Large uploads ------------------------------------------------------------------------
+// Vercel refuses request bodies over 4.5 MB. Bigger files arrive in chunks, each stored as a
+// temporary "staging-…" file, then reassembled by the request that imports the document.
+
 export const STAGING_PREFIX = 'staging-';
+const STAGING_NAME = /^staging-[a-z0-9]{6,32}\.part\d{1,3}$/;
 
-export async function createStagingUpload(fileName: string) {
-	if (persistence().name !== 'supabase') return null;
-	const safe = fileName.normalize('NFKD').replace(/[^\w.-]+/g, '_').slice(-80) || 'document';
-	const stagedName = `${STAGING_PREFIX}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}-${safe}`;
-	const { data, error } = await supabase().storage.from(bucket()).createSignedUploadUrl(stagedName);
-	if (error || !data) throw new Error(`Préparation de l'envoi impossible: ${error?.message ?? ''}`);
-	return { stagedName, signedUrl: data.signedUrl };
+export function stagingPartName(stagingId: string, part: number) {
+	return `${STAGING_PREFIX}${stagingId}.part${part}`;
 }
 
-export async function takeStagedFile(stagedName: string) {
-	if (!stagedName.startsWith(STAGING_PREFIX)) throw new Error('Fichier temporaire invalide.');
-	const buffer = await supabaseBackend.getFile(stagedName);
-	await supabaseBackend.deleteFiles([stagedName]);
-	return buffer;
+export async function putStagingPart(stagingId: string, part: number, buffer: Buffer) {
+	const name = stagingPartName(stagingId, part);
+	if (!STAGING_NAME.test(name)) throw new Error('Fragment de fichier invalide.');
+	await persistence().putFile(name, buffer);
+}
+
+export async function takeStagedFile(stagingId: string, parts: number) {
+	if (!Number.isInteger(parts) || parts < 1 || parts > 100) throw new Error('Fichier fragmenté invalide.');
+	const names = Array.from({ length: parts }, (_, index) => stagingPartName(stagingId, index));
+	if (!names.every((name) => STAGING_NAME.test(name))) throw new Error('Fichier fragmenté invalide.');
+	const buffers: Buffer[] = [];
+	for (const name of names) buffers.push(await persistence().getFile(name));
+	await persistence().deleteFiles(names);
+	return Buffer.concat(buffers);
 }

@@ -490,11 +490,7 @@ async function importDocument({ request, url }: Parameters<RequestHandler>[0]) {
 		const id = createId(part.kind === 'Notification ARE' ? 'period' : 'document');
 		const partSafeName = sanitizeFileName(part.fileName || safeName || 'document.pdf');
 		const storedName = `${id}-${partSafeName || 'document.pdf'}`;
-		await writeStoredFile(
-			storedName,
-			part.buffer,
-			partSafeName.toLowerCase().endsWith('.pdf') ? 'application/pdf' : file.type
-		);
+		await writeStoredFile(storedName, part.buffer);
 
 		if (part.kind === 'Notification ARE') {
 			const period = analyzeAreNotification(part.text, {

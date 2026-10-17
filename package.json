@@ -26,7 +26,8 @@
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"lint": "prettier --check .",
-		"format": "prettier --write ."
+		"format": "prettier --write .",
+		"test:kdrive": "node scripts/test-kdrive.mjs"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-auto": "^7.0.1",
@@ -45,7 +46,6 @@
 	},
 	"dependencies": {
 		"@napi-rs/canvas": "^1.0.8",
-		"@supabase/supabase-js": "^2.118.0",
 		"@tesseract.js-data/fra": "^1.0.0",
 		"pdf-lib": "^1.17.1",
 		"pdfjs-dist": "^6.3.289",
