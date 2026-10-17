@@ -9,8 +9,12 @@ html {
 
 body {
 	margin: 0;
-	min-width: 400px;
+	min-width: 320px;
 	min-height: 100vh;
+	min-height: 100dvh;
+	padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+		env(safe-area-inset-left);
+	-webkit-text-size-adjust: 100%;
 	background:
 		linear-gradient(135deg, rgba(45, 51, 54, 0.68), rgba(10, 11, 12, 0.98)),
 		linear-gradient(90deg, rgba(18, 115, 105, 0.12), rgba(196, 141, 55, 0.08));
@@ -1647,6 +1651,13 @@ pre {
 }
 
 @media (max-width: 760px) {
+	/* iOS Safari zooms into any field below 16px. */
+	input,
+	select,
+	textarea {
+		font-size: 16px;
+	}
+
 	.app-shell {
 		grid-template-columns: 1fr;
 	}
