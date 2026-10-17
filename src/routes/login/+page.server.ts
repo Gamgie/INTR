@@ -1,5 +1,5 @@
 import { base } from '$app/paths';
-import { passwordIsValid, rememberClient } from '$lib/server/access';
+import { passwordIsConfigured, passwordIsValid, rememberClient } from '$lib/server/access';
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -84,6 +84,10 @@ export const actions: Actions = {
 
 		const formData = await request.formData();
 		const password = formData.get('password');
+
+		if (!passwordIsConfigured()) {
+			return fail(503, { error: 'Accès fermé : la variable ACCESS_PASSWORD n’est pas configurée.' });
+		}
 
 		if (typeof password !== 'string' || !passwordIsValid(password)) {
 			attempt.count += 1;

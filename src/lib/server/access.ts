@@ -1,10 +1,8 @@
-import { createHash, scryptSync, timingSafeEqual } from 'node:crypto';
+import { createHash, timingSafeEqual } from 'node:crypto';
 import { env } from '$env/dynamic/private';
 import { base } from '$app/paths';
 import type { Cookies } from '@sveltejs/kit';
 
-const DEFAULT_PASSWORD_SALT = 'InterMittens access v1';
-const DEFAULT_PASSWORD_DIGEST = 'e50c15579c0835a83d9ab4dc2b3f3b1066ecc627625a79e0206a42e2f814283e';
 const ACCESS_COOKIE = 'intermittens_access';
 const COOKIE_VERSION = 'v1';
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 180;
@@ -18,8 +16,8 @@ function digest(value: string) {
 }
 
 function sessionToken() {
-	const passwordCredential =
-		configuredPassword() || Buffer.from(DEFAULT_PASSWORD_DIGEST, 'hex').toString('base64url');
+	// No built-in fallback password: without ACCESS_PASSWORD, no cookie can ever be valid.
+	const passwordCredential = configuredPassword() || `unset:${Math.random()}`;
 
 	return `${COOKIE_VERSION}.${digest(
 		`intermittens:${COOKIE_VERSION}:${passwordCredential}`
@@ -36,13 +34,13 @@ function cookiePath() {
 	return base || '/';
 }
 
+export function passwordIsConfigured() {
+	return Boolean(configuredPassword());
+}
+
 export function passwordIsValid(candidate: string) {
 	const password = configuredPassword();
-	if (password) return safelyEqual(candidate, password);
-
-	const candidateDigest = scryptSync(candidate, DEFAULT_PASSWORD_SALT, 32);
-	const expectedDigest = Buffer.from(DEFAULT_PASSWORD_DIGEST, 'hex');
-	return timingSafeEqual(candidateDigest, expectedDigest);
+	return password ? safelyEqual(candidate, password) : false;
 }
 
 export function hasValidAccessCookie(cookies: Cookies) {
