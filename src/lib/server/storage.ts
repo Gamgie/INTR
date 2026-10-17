@@ -1,7 +1,3 @@
-import { mkdir, readFile, readdir, rename, stat, unlink, writeFile } from 'node:fs/promises';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-
 import { defaultCompanyColor, normalizeCompanyColor } from '$lib/companyColors';
 import type {
 	AppData,
@@ -15,11 +11,9 @@ import type {
 	Project
 } from '$lib/types';
 
-const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
-export const dataDir = path.join(root, 'data');
-export const documentDir = path.join(dataDir, 'documents');
-const dataFile = path.join(dataDir, 'intermittens.json');
-const documentDirResolved = path.resolve(documentDir);
+import { persistence } from '$lib/server/persistence';
+
+export { dataDir, documentDir } from '$lib/server/persistence';
 
 const now = () => new Date().toISOString();
 
@@ -106,16 +100,6 @@ export function createDefaultData(): AppData {
 			remoteLastSyncStatus: 'Synchronisation distante non activée'
 		}
 	};
-}
-
-async function ensureDataFiles() {
-	await mkdir(documentDir, { recursive: true });
-
-	try {
-		await stat(dataFile);
-	} catch {
-		await writeJson(createDefaultData());
-	}
 }
 
 function normalizeNumber(value: unknown) {
@@ -329,22 +313,19 @@ export function normalizeData(input: Partial<AppData>): AppData {
 	};
 }
 
-async function writeJson(data: AppData) {
-	await mkdir(dataDir, { recursive: true });
-	const tmpFile = `${dataFile}.tmp`;
-	await writeFile(tmpFile, `${JSON.stringify(data, null, 2)}\n`, 'utf-8');
-	await rename(tmpFile, dataFile);
-}
-
 export async function readData(): Promise<AppData> {
-	await ensureDataFiles();
-	const raw = await readFile(dataFile, 'utf-8');
-	return normalizeData(JSON.parse(raw) as AppData);
+	const raw = await persistence().readJson();
+	if (raw === null) {
+		const initial = createDefaultData();
+		await persistence().writeJson(initial);
+		return normalizeData(initial);
+	}
+	return normalizeData(raw as AppData);
 }
 
 export async function saveData(data: AppData): Promise<AppData> {
 	const normalized = normalizeData(data);
-	await writeJson(normalized);
+	await persistence().writeJson(normalized);
 	return normalized;
 }
 
@@ -354,29 +335,16 @@ export async function mutateData(mutator: (data: AppData) => AppData | void): Pr
 	return saveData(result);
 }
 
-function resolveStoredDocumentPath(storedName: string) {
-	const target = path.resolve(documentDir, storedName);
-	if (target !== documentDirResolved && !target.startsWith(`${documentDirResolved}${path.sep}`)) {
-		throw new Error(`Chemin document invalide: ${storedName}`);
-	}
-	return target;
+export async function writeStoredFile(storedName: string, buffer: Buffer, contentType?: string) {
+	await persistence().putFile(storedName, buffer, contentType);
+}
+
+export async function readStoredFile(storedName: string) {
+	return persistence().getFile(storedName);
 }
 
 export async function deleteStoredFiles(storedNames: string[]) {
-	const deletedFiles: string[] = [];
-
-	for (const storedName of [...new Set(storedNames.filter(Boolean))]) {
-		try {
-			await unlink(resolveStoredDocumentPath(storedName));
-			deletedFiles.push(storedName);
-		} catch (cause) {
-			if (!(cause instanceof Error) || !('code' in cause) || cause.code !== 'ENOENT') {
-				throw cause;
-			}
-		}
-	}
-
-	return deletedFiles;
+	return persistence().deleteFiles([...new Set(storedNames.filter(Boolean))]);
 }
 
 export function usedStoredFiles(data: AppData) {
@@ -387,9 +355,8 @@ export function usedStoredFiles(data: AppData) {
 }
 
 export async function cleanupUnusedDocumentFiles(data: AppData) {
-	await mkdir(documentDir, { recursive: true });
 	const used = usedStoredFiles(data ?? (await readData()));
-	const files = await readdir(documentDir);
+	const files = await persistence().listFiles();
 	const unused = files.filter((file) => !used.has(file));
 	const deletedFiles = await deleteStoredFiles(unused);
 

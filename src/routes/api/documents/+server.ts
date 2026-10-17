@@ -1,5 +1,3 @@
-﻿import { mkdir, writeFile } from 'node:fs/promises';
-import path from 'node:path';
 
 import { error, json, type RequestHandler } from '@sveltejs/kit';
 
@@ -32,7 +30,8 @@ import {
 	pushDataToRemote,
 	syncHeaders
 } from '$lib/server/remoteSync';
-import { createId, documentDir, mutateData, readData, saveData } from '$lib/server/storage';
+import { formFile } from '$lib/server/formFile';
+import { createId, mutateData, readData, saveData, writeStoredFile } from '$lib/server/storage';
 import type {
 	AppData,
 	Company,
@@ -458,10 +457,9 @@ async function importDocument({ request, url }: Parameters<RequestHandler>[0]) {
 	const contractId = String(form.get('contractId') ?? '');
 	const createContract = String(form.get('createContract') ?? '') === 'true';
 	const autoRoute = String(form.get('autoRoute') ?? '') === 'true';
-	const file = form.get('file');
+	const file = await formFile(form);
 
 	if (!contractId && !createContract && !autoRoute) error(400, 'Identifiant de contrat manquant.');
-	if (!(file instanceof File)) error(400, 'Fichier manquant.');
 
 	const kind = documentKindFromFileName(file.name, safeKind(form.get('kind')));
 	const buffer = Buffer.from(await file.arrayBuffer());
@@ -481,7 +479,6 @@ async function importDocument({ request, url }: Parameters<RequestHandler>[0]) {
 	);
 	if (remotePayload) return json(remotePayload);
 
-	await mkdir(documentDir, { recursive: true });
 	const parts = await splitAndClassifyDocument(file.name, file.type, buffer, kind);
 	const preparedDocuments: ContractDocument[] = [];
 	const preparedPeriods: IntermittencePeriod[] = [];
@@ -493,7 +490,11 @@ async function importDocument({ request, url }: Parameters<RequestHandler>[0]) {
 		const id = createId(part.kind === 'Notification ARE' ? 'period' : 'document');
 		const partSafeName = sanitizeFileName(part.fileName || safeName || 'document.pdf');
 		const storedName = `${id}-${partSafeName || 'document.pdf'}`;
-		await writeFile(path.join(documentDir, storedName), part.buffer);
+		await writeStoredFile(
+			storedName,
+			part.buffer,
+			partSafeName.toLowerCase().endsWith('.pdf') ? 'application/pdf' : file.type
+		);
 
 		if (part.kind === 'Notification ARE') {
 			const period = analyzeAreNotification(part.text, {

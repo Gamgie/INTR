@@ -5,7 +5,7 @@
 	"type": "module",
 	"scripts": {
 		"dev": "vite dev",
-		"build": "vite build",
+		"build": "vite build && node scripts/vercel-include-dynamic.mjs",
 		"start": "node build",
 		"setup": "node scripts/setup-deploy.mjs",
 		"setup:deploy": "node scripts/setup-deploy.mjs",
@@ -31,6 +31,7 @@
 	"devDependencies": {
 		"@sveltejs/adapter-auto": "^7.0.1",
 		"@sveltejs/adapter-node": "^5.5.6",
+		"@sveltejs/adapter-vercel": "^6.3.4",
 		"@sveltejs/kit": "^2.63.0",
 		"@sveltejs/vite-plugin-svelte": "^7.1.2",
 		"@types/node": "^26.0.0",
@@ -44,6 +45,7 @@
 	},
 	"dependencies": {
 		"@napi-rs/canvas": "^1.0.8",
+		"@supabase/supabase-js": "^2.118.0",
 		"@tesseract.js-data/fra": "^1.0.0",
 		"pdf-lib": "^1.17.1",
 		"pdfjs-dist": "^6.3.289",

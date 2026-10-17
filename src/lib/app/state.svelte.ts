@@ -10,6 +10,7 @@ import {
 	getActivePeriod,
 	round
 } from '$lib/stats';
+import { appendFile } from '$lib/app/uploadFile';
 import { defaultCompanyColor, normalizeCompanyColor } from '$lib/companyColors';
 import type {
 	AppData,
@@ -654,7 +655,7 @@ export function createIntermittensState(initialData: AppData) {
 		body.set('contractId', contract.id);
 		body.set('autoRoute', 'true');
 		body.set('kind', kind);
-		body.set('file', file);
+		await appendFile(body, file);
 
 		const response = await fetch(`${base}/api/documents`, { method: 'POST', body });
 		input.value = '';
@@ -764,12 +765,12 @@ export function createIntermittensState(initialData: AppData) {
 			const body = new FormData();
 			body.set('autoRoute', 'true');
 			body.set('kind', 'Autre');
-			body.set('file', file);
 
 			let response: Response;
 			let payload: DocumentImportPayload;
 
 			try {
+				await appendFile(body, file);
 				response = await fetch(`${base}/api/documents`, { method: 'POST', body });
 				payload = await readServerPayload<DocumentImportPayload>(response, {
 					analysis: { notes: ['Réponse serveur illisible.'] },
@@ -1020,7 +1021,7 @@ export function createIntermittensState(initialData: AppData) {
 		areUploadState = 'Analyse de la notification ARE...';
 
 		const body = new FormData();
-		body.set('file', file);
+		await appendFile(body, file);
 
 		const response = await fetch(`${base}/api/are/notifications`, { method: 'POST', body });
 		input.value = '';
