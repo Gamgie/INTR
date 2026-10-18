@@ -97,34 +97,48 @@ function validDate(year: number, month: number, day = 1) {
 	return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
-/** Première date lisible dans un nom ou un chemin : 2024_10_24, 2024-10-21, 05.2022, 2024/10/… */
-export function dateFromText(text: string) {
+export type TextDate = { date: string; dayKnown: boolean };
+
+/**
+ * Date lisible dans un nom ou un chemin, seulement pour un fichier non analysé (un fichier
+ * analysé prend toujours la date de début de son contrat).
+ *
+ * Noms Zeendoc (« Bulletin de paie_GAMGIE (COMPAGNIE)_2024_10_24_…_2024-10-21 ») : le bloc
+ * AAAA_MM_AA donne le mois (le dernier nombre est l'année sur deux chiffres, pas un jour) et la
+ * date finale est celle du dépôt du document, pas celle du contrat. On n'en garde que le mois.
+ */
+export function parseTextDate(text: string): TextDate | undefined {
+	const zeendoc = /(20(\d{2}))_(\d{2})_(\d{2})(?:_|$)/.exec(text);
+	if (zeendoc && zeendoc[4] === zeendoc[2]) {
+		const date = validDate(Number(zeendoc[1]), Number(zeendoc[3]));
+		if (date) return { date, dayKnown: false };
+	}
 	const full = /(20\d{2})[_\-. ](\d{2})[_\-. ](\d{2})/.exec(text);
 	if (full) {
 		const date = validDate(Number(full[1]), Number(full[2]), Number(full[3]));
-		if (date) return date;
+		if (date) return { date, dayKnown: true };
 	}
 	const frenchFull = /(\d{2})[_\-./](\d{2})[_\-./](20\d{2})/.exec(text);
 	if (frenchFull) {
 		const date = validDate(Number(frenchFull[3]), Number(frenchFull[2]), Number(frenchFull[1]));
-		if (date) return date;
+		if (date) return { date, dayKnown: true };
 	}
 	const monthYear = /(?:^|[^\d])(\d{2})[._\-](20\d{2})(?:[^\d]|$)/.exec(text);
 	if (monthYear) {
 		const date = validDate(Number(monthYear[2]), Number(monthYear[1]));
-		if (date) return date;
+		if (date) return { date, dayKnown: false };
 	}
 	const pathYearMonth = /(?:^|\/)(20\d{2})\/(\d{2})(?:\/|$)/.exec(text);
 	if (pathYearMonth) {
 		const date = validDate(Number(pathYearMonth[1]), Number(pathYearMonth[2]));
-		if (date) return date;
+		if (date) return { date, dayKnown: false };
 	}
-	return '';
+	return undefined;
 }
 
-/** Vrai si le texte contient une date complète (avec le jour), pas seulement un mois. */
-function hasFullDate(text: string) {
-	return /(20\d{2})[_\-. ](\d{2})[_\-. ](\d{2})/.test(text) || /(\d{2})[_\-./](\d{2})[_\-./](20\d{2})/.test(text);
+/** Date seule (AAAA-MM-JJ, jour 01 quand seul le mois est connu). */
+export function dateFromText(text: string) {
+	return parseTextDate(text)?.date ?? '';
 }
 
 /** Employeur déduit du chemin quand l'analyse n'en donne pas (…/AAAA/MM/Employeur/fichier). */
@@ -233,12 +247,11 @@ function classify(data: AppData, file: OrganizeSource): Classification | undefin
 		return [...candidates].sort((a, b) => a.date.localeCompare(b.date))[0];
 	}
 
-	const fromName = dateFromText(file.name);
-	const date = fromName || dateFromText(file.path);
-	if (!date) return undefined;
+	const found = parseTextDate(file.name) ?? parseTextDate(file.path);
+	if (!found) return undefined;
 	return {
-		date,
-		dayKnown: Boolean(fromName) && hasFullDate(file.name),
+		date: found.date,
+		dayKnown: found.dayKnown,
 		employer: chooseEmployer(data, [employerFromName(file.name), employerFromPath(file.path)], file.name),
 		type: typeFromName(file.name),
 		basis: 'nom du fichier'

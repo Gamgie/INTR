@@ -12,10 +12,13 @@ const file = (id, path, importable = true) => ({ id, name: path.split('/').at(-1
 const imported = (fileId, documentIds, periodIds = []) => ({ fileId, status: 'importé', documentIds, periodIds });
 
 try {
-	const { buildOrganizePlan, dateFromText, employerFromName } = await server.ssrLoadModule('/src/lib/organize.ts');
+	const { buildOrganizePlan, dateFromText, employerFromName, parseTextDate } = await server.ssrLoadModule('/src/lib/organize.ts');
 	const today = new Date('2026-10-18T12:00:00');
 
-	assert.equal(dateFromText('Bulletin de paie_GAMGIE (COMPAGNIE)_2024_10_24_RIGNAULT_Clément RIGNAULT_2024-10-21.Zeendoc.pdf'), '2024-10-24');
+	// Zeendoc : AAAA_MM_AA = mois seulement ; la date finale (dépôt) est ignorée.
+	assert.deepEqual(parseTextDate('Bulletin de paie_GAMGIE (COMPAGNIE)_2024_10_24_RIGNAULT_Clément RIGNAULT_2024-10-21.Zeendoc.pdf'), { date: '2024-10-01', dayKnown: false });
+	assert.deepEqual(parseTextDate('Contrat de travail_GAMGIE (COMPAGNIE)_2026_04_26__RIGNAULT Clément_2026-04-21.Zeendoc.pdf'), { date: '2026-04-01', dayKnown: false });
+	assert.deepEqual(parseTextDate('[AEM] 2024-11-09 Baron Production.pdf'), { date: '2024-11-09', dayKnown: true });
 	assert.equal(dateFromText('THEORIZ Paie Clément 05.2022.pdf'), '2022-05-01');
 	assert.equal(dateFromText('Archive/2024/06/x.pdf'), '2024-06-01');
 	assert.equal(employerFromName('Bulletin de paie_GAMGIE (COMPAGNIE)_2026_07_26_RIGNAULT.pdf'), 'GAMGIE (COMPAGNIE)');
@@ -55,7 +58,8 @@ try {
 		file(9, 'notification.pdf'),
 		file(10, 'Archive/notes sans date.pdf'),
 		file(11, 'Archive/2022/THEORIZ Paie Clément 05.2022.pdf'),
-		file(12, '2026/04/Compagnie Gamgie/bp avril bis.pdf')
+		file(12, '2026/04/Compagnie Gamgie/bp avril bis.pdf'),
+		file(13, 'Archive/2024/10/Compagnie Gamgie/Contrat de travail_GAMGIE (COMPAGNIE)_2024_10_24___2024-10-21.Zeendoc.pdf')
 	];
 
 	const plan = buildOrganizePlan(data, files, today);
@@ -71,6 +75,9 @@ try {
 	assert.equal(plan.moves.find((move) => move.fileId === 6).basis, 'nom du fichier');
 	assert.equal(target[12], '2026/04/Compagnie Gamgie/[BP] 2026-04-24 Compagnie Gamgie 2.pdf', 'homonyme numéroté');
 	assert.equal(target[11], 'Archive/2022/05/THEORIZ/[BP] 2022-05 THEORIZ.pdf', 'jour inconnu : année-mois seulement');
+	assert.equal(target[13], 'Archive/2024/10/Compagnie Gamgie/[CT] 2024-10 Compagnie Gamgie.pdf', 'Zeendoc non analysé : mois seulement');
+	// Un bulletin analysé prend la date de début du contrat, même si son nom Zeendoc dit autre chose.
+	assert.equal(plan.moves.find((move) => move.fileId === 2).date, '2026-07-14');
 	assert.equal(target[9], '2026/11 (2025)/France Travail/[ARE] 2025-11-28 France Travail.pdf');
 	assert.deepEqual(
 		plan.skipped.map((skip) => [skip.fileId, skip.reason]).sort(),
