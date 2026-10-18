@@ -1,3 +1,4 @@
+import { annexSplit, type AnnexSplit } from '$lib/annex';
 import { contractRecognizedHours, round } from '$lib/stats';
 import type { AppData } from '$lib/types';
 import { intermittenceYears, yearOfDate, type IntermittenceYear } from '$lib/years';
@@ -18,6 +19,8 @@ export type YearHistory = {
 	realIndemnity: number;
 	congeSpectacle: number;
 	employers: EmployerTotal[];
+	/** Heures par annexe, d'après l'emploi de chaque contrat. */
+	annexes: AnnexSplit;
 };
 
 /** Totaux par année d'intermittence, de la plus récente à la plus ancienne. */
@@ -37,7 +40,8 @@ export function buildYearHistory(data: AppData, today = new Date()): YearHistory
 				progress: 0,
 				realIndemnity: 0,
 				congeSpectacle: 0,
-				employers: new Map<string, EmployerTotal>()
+				employers: new Map<string, EmployerTotal>(),
+				contractList: [] as AppData['contracts']
 			}
 		])
 	);
@@ -54,6 +58,7 @@ export function buildYearHistory(data: AppData, today = new Date()): YearHistory
 		entry.netSalary += contract.netSalary;
 		entry.contributions += contract.contributions;
 		entry.contracts += 1;
+		entry.contractList.push(contract);
 		const name = companyName(contract.companyId);
 		const employer = entry.employers.get(name) ?? { name, hours: 0, grossSalary: 0, contracts: 0 };
 		employer.hours += hours;
@@ -72,9 +77,10 @@ export function buildYearHistory(data: AppData, today = new Date()): YearHistory
 
 	const target = data.settings.targetHours || 507;
 	return years.map((year) => {
-		const entry = byYear.get(year.year)!;
+		const { contractList, ...entry } = byYear.get(year.year)!;
 		return {
 			...entry,
+			annexes: annexSplit(contractList),
 			hours: round(entry.hours),
 			cachets: round(entry.cachets),
 			grossSalary: round(entry.grossSalary),

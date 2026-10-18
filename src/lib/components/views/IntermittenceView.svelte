@@ -6,7 +6,9 @@
 	import KdriveImport from '$lib/components/KdriveImport.svelte';
 	import YearPicker from '$lib/components/YearPicker.svelte';
 	import { formatCurrency, formatNumber, formatPreciseCurrency } from '$lib/format';
+	import { annexSplit } from '$lib/annex';
 	import { ANNEXES, RULES } from '$lib/rules';
+	import { yearOfDate } from '$lib/years';
 	import { estimateDailyAllowanceDetail } from '$lib/stats';
 
 	let { state }: { state: IntrState } = $props();
@@ -15,6 +17,15 @@
 			? estimateDailyAllowanceDetail(state.appData)
 			: null
 	);
+	// Heures de l'année choisie par annexe, d'après l'emploi de chaque contrat.
+	let split = $derived(
+		annexSplit(
+			state.appData.contracts.filter(
+				(contract) => yearOfDate(state.appData, contract.startDate) === state.selectedYear?.year
+			)
+		)
+	);
+	let suggested = $derived(split.lastAnnex || split.majority);
 </script>
 
 <section class="view-grid two-columns">
@@ -226,6 +237,23 @@
 						<option value={annex}>{RULES[annex].label}</option>
 					{/each}
 				</select>
+				<small class="annex-hint">
+					Année {state.selectedYear?.year ?? ""} : {formatNumber(split.annex10, 0)} h en annexe 10
+					(artiste), {formatNumber(split.annex8, 0)} h en annexe 8 (technicien){#if split.unknown}, {formatNumber(split.unknown, 0)} h d’emploi inconnu{/if}.
+					{#if split.lastAnnex}Dernier contrat : {split.lastAnnex.toLowerCase()}.{/if}
+				</small>
+				{#if suggested && suggested !== state.appData.settings.annex}
+					<button
+						type="button"
+						class="ghost-button"
+						onclick={() => {
+							state.appData.settings.annex = suggested as typeof state.appData.settings.annex;
+							state.touch();
+						}}
+					>
+						Passer en {suggested.toLowerCase()}
+					</button>
+				{/if}
 			</label>
 			<label>
 				<span>PMSS</span>
@@ -405,3 +433,10 @@
 		</div>
 	</section>
 </section>
+
+<style>
+	.annex-hint {
+		color: rgba(237, 241, 238, 0.68);
+		line-height: 1.4;
+	}
+</style>

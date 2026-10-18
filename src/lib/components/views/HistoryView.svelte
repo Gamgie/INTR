@@ -82,6 +82,13 @@
 				<span>{formatNumber(entry.progress * 100, 0)} % des {target} h</span>
 			</div>
 			<progress value={entry.hours} max={target}></progress>
+			{#if entry.annexes.annex8 || entry.annexes.annex10}
+				<p class="annex-split">
+					Annexe 10 (artiste) : {formatNumber(entry.annexes.annex10, 0)} h · Annexe 8
+					(technicien) : {formatNumber(entry.annexes.annex8, 0)} h{#if entry.annexes.unknown}
+						· emploi inconnu : {formatNumber(entry.annexes.unknown, 0)} h{/if}
+				</p>
+			{/if}
 
 			<dl class="year-figures">
 				<div><dt>Contrats</dt><dd>{entry.contracts}</dd></div>
@@ -252,6 +259,12 @@
 	.year-figures dd {
 		margin: 0;
 		font-variant-numeric: tabular-nums;
+	}
+
+	.annex-split {
+		margin: 6px 0 0;
+		font-size: 13px;
+		color: rgba(237, 241, 238, 0.68);
 	}
 
 	.employers {

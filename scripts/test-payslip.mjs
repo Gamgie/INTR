@@ -141,6 +141,21 @@ try {
 	);
 	assert.deepEqual([meals.netSalary, meals.allowances], [183.59, 41.4]);
 
+	// Emploi lu sur l'AEM, et annexe qui en découle.
+	assert.equal(m.readFigures(aem('3 3', '432,00'), 'AEM').job, 'Artiste visuel');
+	const annex = await server.ssrLoadModule('/src/lib/annex.ts');
+	assert.equal(annex.contractAnnex({ employmentStatus: 'Artiste visuel' }), 'Annexe 10');
+	assert.equal(annex.contractAnnex({ employmentStatus: 'Clown' }), 'Annexe 10');
+	assert.equal(annex.contractAnnex({ employmentStatus: 'VJj ( videojokey )' }), 'Annexe 10');
+	assert.equal(annex.contractAnnex({ employmentStatus: 'T e c h n i c i e n v i d e o' }), 'Annexe 8');
+	assert.equal(annex.contractAnnex({ employmentStatus: 'Régisseur plateau' }), 'Annexe 8');
+	assert.equal(annex.contractAnnex({ employmentStatus: '' }), '');
+	const split = annex.annexSplit([
+		{ employmentStatus: 'Technicien vidéo', hours: 100, cachets: 0, startDate: '2026-01-01', endDate: '2026-01-05' },
+		{ employmentStatus: 'Artiste visuel', hours: 60, cachets: 0, startDate: '2026-03-01', endDate: '2026-03-05' }
+	]);
+	assert.deepEqual([split.annex8, split.annex10, split.majority, split.lastAnnex], [100, 60, 'Annexe 8', 'Annexe 10']);
+
 	console.log('Payslip figures tests passed.');
 } finally {
 	await server.close();

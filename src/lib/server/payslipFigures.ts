@@ -18,6 +18,8 @@ export type Figures = {
 	netSalary?: number;
 	netSocial?: number;
 	allowances?: number;
+	/** Emploi déclaré sur l'AEM (« Artiste visuel », « Technicien vidéo »). */
+	job?: string;
 };
 
 const money = String.raw`(\d{1,3}(?:[  ]\d{3})*,\d{2})`;
@@ -118,6 +120,10 @@ function readGhsAem(text: string): Figures | undefined {
 		endDate: isoDate(match[4], match[5], match[6]),
 		grossSalary: toNumber(match[8])
 	};
+	const job = text.match(
+		/\b((?:ARTISTE|TECHNICIEN|REGISSEU|CLOWN|COMEDIEN|DANSEU|MUSICIEN|CHANTEU|VIDEO|VJ|CONSEILLER|CHEF|ASSISTANT|CREATEUR|MONTEUR|CADREUR|ECLAIRAGISTE|OPERATEUR|MACHINISTE|ACTEUR|PERFORMEU)[A-ZÀ-Ü ()'-]*?) (?:\d{3}[0-9A-Z]\d{6,8}|RIC|ARRCO)\b/
+	)?.[1];
+	if (job) figures.job = job.charAt(0) + job.slice(1).toLowerCase();
 	const counts = match[7].replace(/X/g, ' ').trim().split(/\s+/).map(Number);
 	let hours = 0;
 	let cachets = 0;
@@ -228,6 +234,13 @@ export function consolidateContract(contract: Contract, documents: ContractDocum
 	if (payslips.some((figures) => figures.netSalary)) {
 		fields.netSalary = sum(payslips.map((figures) => figures.netSalary));
 		sources.push('net payé : bulletin');
+	}
+
+	// Emploi déclaré par l'employeur sur l'AEM : il fixe l'annexe du contrat (artiste ou technicien).
+	const job = aems.map((figures) => figures.job).find(Boolean);
+	if (job && job !== contract.employmentStatus) {
+		fields.employmentStatus = job;
+		sources.push('emploi : AEM');
 	}
 
 	// Dates du contrat : celles de l'AEM (début et fin du contrat de travail), sinon celles des
