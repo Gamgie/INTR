@@ -330,7 +330,8 @@ export function normalizeData(input: Partial<AppData>): AppData {
 
 	return {
 		version: 1,
-		updatedAt: now(),
+		// Date de la dernière écriture : gardée telle quelle à la lecture, posée par saveData.
+		updatedAt: cleanString(input.updatedAt) || now(),
 		companies: Array.isArray(input.companies) ? input.companies.map(normalizeCompany) : [],
 		projects: Array.isArray(input.projects) ? input.projects.map(normalizeProject) : [],
 		contracts: Array.isArray(input.contracts) ? input.contracts.map(normalizeContract) : [],
@@ -403,6 +404,7 @@ export async function readData(): Promise<AppData> {
 
 export async function saveData(data: AppData): Promise<AppData> {
 	const normalized = normalizeData(data);
+	normalized.updatedAt = now();
 	await persistence().writeJson(normalized);
 	return normalized;
 }

@@ -23,6 +23,20 @@ export const GET: RequestHandler = async ({ request, url, fetch }) => {
 export const PUT: RequestHandler = async ({ request, url, fetch }) => {
 	try {
 		const payload = (await request.json()) as AppData;
+		// Une page restée ouverte avec d'anciennes données ne doit pas écraser ce qui a été
+		// enregistré depuis (import, autre appareil) : elle reçoit les données à jour à la place.
+		if (request.headers.get('x-intr-force') !== '1') {
+			const current = await readData();
+			if (payload.updatedAt && current.updatedAt && payload.updatedAt < current.updatedAt) {
+				return json(
+					{
+						message: 'Les données ont changé depuis l’ouverture de la page : elles ont été rechargées.',
+						data: current
+					},
+					{ status: 409 }
+				);
+			}
+		}
 		let saved = await saveData(payload);
 
 		if (!isSyncRequest(request) && !isSameDeployment(saved.settings.remoteBaseUrl, url)) {

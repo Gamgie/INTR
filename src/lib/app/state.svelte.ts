@@ -246,7 +246,7 @@ export function createIntrState(initialData: AppData) {
 	let selectedContractId = $state(initialSnapshot.contracts[0]?.id ?? '');
 	let selectedMonth = $state(initialMonth);
 	let companyEditId = $state('');
-	let saveState = $state<'idle' | 'saving' | 'saved' | 'error'>('idle');
+	let saveState = $state<'idle' | 'saving' | 'saved' | 'error' | 'reloaded'>('idle');
 	let uploadState = $state<Record<string, string>>({});
 	let contractImportFeedback = $state<ContractImportFeedback | null>(null);
 	let contractImportUndoSnapshot: ContractImportUndoSnapshot | undefined;
@@ -305,7 +305,7 @@ export function createIntrState(initialData: AppData) {
 		}
 		changeRevision += 1;
 		dirty = true;
-		if (saveState === 'saved' || saveState === 'error') saveState = 'idle';
+		if (saveState === 'saved' || saveState === 'error' || saveState === 'reloaded') saveState = 'idle';
 	}
 
 	function ensureMonthlyInfo(month: string): MonthlyInfo {
@@ -386,6 +386,15 @@ export function createIntrState(initialData: AppData) {
 				body
 			});
 
+			if (response.status === 409) {
+				// Données plus récentes sur le serveur : on les reprend plutôt que de les écraser.
+				const payload = (await response.json().catch(() => ({}))) as { data?: AppData };
+				if (payload.data) appData = payload.data;
+				dirty = false;
+				saveState = 'reloaded';
+				return;
+			}
+
 			if (!response.ok) {
 				saveState = 'error';
 				return;
@@ -399,6 +408,8 @@ export function createIntrState(initialData: AppData) {
 				return;
 			}
 
+			// Modifiée pendant l'envoi : on garde la saisie, avec la date de la version enregistrée.
+			appData.updatedAt = savedData.updatedAt;
 			dirty = true;
 			saveState = 'idle';
 		} catch {
@@ -952,7 +963,7 @@ export function createIntrState(initialData: AppData) {
 		try {
 			const response = await fetch(`${base}/api/data`, {
 				method: 'PUT',
-				headers: { 'content-type': 'application/json' },
+				headers: { 'content-type': 'application/json', 'x-intr-force': '1' },
 				body: JSON.stringify(snapshot.data)
 			});
 			if (!response.ok) throw new Error('Restauration refusée par le serveur.');

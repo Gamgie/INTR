@@ -62,6 +62,8 @@
 					JSON à jour
 				{:else if state.saveState === 'error'}
 					Erreur serveur
+				{:else if state.saveState === 'reloaded'}
+					Données rechargées, modification à refaire
 				{:else if state.dirty}
 					Modifications locales
 				{:else}
