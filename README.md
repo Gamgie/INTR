@@ -3,6 +3,11 @@
 Application SvelteKit de gestion d’intermittence: structures, projets, contrats, documents,
 notifications ARE, périodes d’intermittence et statistiques.
 
+> **Version de Clément (Gamgie/INTR)**, portée depuis [benkuper/InterMittens](https://github.com/benkuper/InterMittens) :
+> hébergement Vercel sur intermittent.gamgie.com, données dans kDrive, installable sur iPhone,
+> calculs alignés sur les annexes 8 et 10 de la convention du 15 novembre 2024 (`src/lib/rules.ts`).
+> Mise en ligne : [docs/INSTALLATION.md](docs/INSTALLATION.md).
+
 ## Développement local
 
 ```sh
