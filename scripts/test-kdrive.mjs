@@ -229,70 +229,22 @@ try {
 		'originaux intacts'
 	);
 
-	// --- Organize the source folder, undo, then empty folders ---
+	// --- Original file download (read-only, limited to the source folder) ---
 	{
-		const sourceFolder = `${source.id}`;
-		const intoTree = (id) => kdrive.pathOf(id).replace(/^Intermittence\//, '');
-		const loose = kdrive.addFile(archive.id, '[AEM] 2024-11-09 Baron Production.pdf', 'aem');
-		const clash = kdrive.addDir(source.id, 'Archive2');
-		const planResponse = await call(`/api/kdrive/organize?folder=${sourceFolder}`);
-		const plan = await planResponse.json();
-		assert.equal(planResponse.status, 200, `plan: ${plan.message}`);
-		const targets = Object.fromEntries(plan.moves.map((move) => [move.fromPath, move.toPath]));
-		assert.ok(targets['2026/contrat-octobre.pdf'], 'contrat d’octobre à ranger');
-		assert.ok(!targets['Archive/[AEM] 2024-11-09 Baron Production.pdf'], 'non importé : laissé en place');
-		assert.match(
-			plan.skipped.find((skip) => skip.path === 'Archive/[AEM] 2024-11-09 Baron Production.pdf')?.reason ?? '',
-			/pas encore importé/
-		);
-		assert.match(targets['2026/contrat-octobre.pdf'], /\/Compagnie Source\/\[CT\] 2026-10-20 Compagnie Source\.pdf$/, 'employeur lu par OCR');
-		assert.ok(plan.skipped.some((skip) => skip.path === 'Déclaration.xlsx'), 'tableur laissé');
-
-		const before = plan.moves.map((move) => [move.fileId, intoTree(move.fileId)]);
-		const batchId = 'lot-test';
-		for (const move of plan.moves) {
-			const response = await call('/api/kdrive/organize/apply', {
-				method: 'POST',
-				body: JSON.stringify({ folderId: source.id, batchId, move }),
-				headers: { 'content-type': 'application/json' }
-			});
-			const payload = await response.json();
-			assert.equal(response.status, 200, `rangement ${move.fromPath}: ${payload.message}`);
-			assert.equal(intoTree(move.fileId), move.toPath, `chemin réel de ${move.fromPath}`);
-		}
-		const replan = await (await call(`/api/kdrive/organize?folder=${sourceFolder}`)).json();
-		assert.equal(replan.moves.length, 0, 'plus rien à ranger');
-		const data = await (await call('/api/data')).json();
-		assert.equal(data.kdriveMoves.filter((move) => move.batchId === batchId).length, plan.moves.length, 'journal complet');
-
-		for (const move of [...plan.moves].reverse()) {
-			const response = await call('/api/kdrive/organize/undo', {
-				method: 'POST',
-				body: JSON.stringify({ batchId, fileId: move.fileId }),
-				headers: { 'content-type': 'application/json' }
-			});
-			assert.equal(response.status, 200, `annulation ${move.toPath}`);
-		}
-		assert.deepEqual(plan.moves.map((move) => [move.fileId, intoTree(move.fileId)]), before, 'tout est revenu en place');
-
-		// Rangement à nouveau, puis nettoyage des dossiers vides (vers la corbeille).
-		const plan2 = await (await call(`/api/kdrive/organize?folder=${sourceFolder}`)).json();
-		for (const move of plan2.moves) {
-			await call('/api/kdrive/organize/apply', {
-				method: 'POST',
-				body: JSON.stringify({ folderId: source.id, batchId: 'lot-2', move }),
-				headers: { 'content-type': 'application/json' }
-			});
-		}
-		const emptied = await (await call('/api/kdrive/organize/empty', {
-			method: 'POST',
-			body: JSON.stringify({ folder: sourceFolder }),
+		const sheet = kdrive.children(source.id).find((node) => node.name === 'Déclaration.xlsx');
+		const settingsData = await (await call('/api/data')).json();
+		settingsData.settings.kdriveSourceFolder = String(source.id);
+		const saved = await call('/api/data', {
+			method: 'PUT',
+			body: JSON.stringify(settingsData),
 			headers: { 'content-type': 'application/json' }
-		})).json();
-		assert.ok(emptied.ok, emptied.message);
-		assert.ok(emptied.trashed.includes('Archive2') && !emptied.trashed.includes('2026'), `dossiers vides: ${emptied.trashed}`);
-		assert.ok(!emptied.trashed.includes('Archive'), 'Archive garde ses fichiers');
-		assert.ok(kdrive.nodes.has(loose.id) && kdrive.nodes.has(clash.id) === false, 'fichiers intacts, dossier vide à la corbeille');
+		});
+		assert.equal(saved.status, 200, 'réglage du dossier source enregistré');
+		const ok = await call(`/api/kdrive/original?id=${sheet.id}`);
+		assert.equal(ok.status, 200, 'original lisible');
+		assert.equal(Buffer.from(await ok.arrayBuffer()).toString(), 'pas un pdf');
+		const outside = kdrive.addFile(1, 'hors-dossier.txt', 'secret');
+		assert.equal((await call(`/api/kdrive/original?id=${outside.id}`)).status, 403, 'hors du dossier source : refusé');
 	}
 
 	// --- Deep tree and pagination (fake kDrive pages by 10) ---

@@ -21,7 +21,7 @@
 		"remote:status": "node scripts/remote-runtime.mjs status",
 		"publish": "npm run deploy",
 		"preview": "vite preview",
-		"test": "node scripts/test-document-analysis.mjs && node scripts/test-stats.mjs && node scripts/test-document-presence.mjs && node scripts/test-rules.mjs && node scripts/test-years.mjs && node scripts/test-organize.mjs && node scripts/test-employer.mjs",
+		"test": "node scripts/test-document-analysis.mjs && node scripts/test-stats.mjs && node scripts/test-document-presence.mjs && node scripts/test-rules.mjs && node scripts/test-years.mjs && node scripts/test-employer.mjs",
 		"prepare": "svelte-kit sync || echo ''",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",

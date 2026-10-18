@@ -87,35 +87,6 @@ Dans l'app, onglet **Intermittence**, panneau **Import depuis kDrive** :
 
 Les fichiers Excel (comme `Déclaration.xlsx`) ne sont pas analysés par l'app.
 
-## 7. Ranger le dossier kDrive
-
-Toujours dans **Intermittence**, panneau **Ranger le dossier kDrive** (après l'import) :
-
-1. **Préparer le rangement** : l'app montre où ira chaque fichier, sans rien toucher.
-   - Année en cours (ou à venir) : `2026/MM/Employeur/`
-   - Années passées : `Archive/AAAA/MM/Employeur/`
-   - Nom : `[CODE] AAAA-MM-JJ Employeur.pdf`, par exemple `[BP] 2026-07-14 Compagnie Gamgie.pdf`.
-     Codes : `[BP]` bulletin de paie, `[AEM]`, `[CS]` Congés Spectacles, `[CT]` contrat de travail,
-     `[ARE]` notification France Travail, `[GUSO]`, `[DOC]` autre document. Quand seul le mois
-     est connu (fichier non analysé), le nom porte `AAAA-MM`. Deux fichiers de même nom prennent
-     « 2 », « 3 »…
-   - « Année » = année d'intermittence : du lendemain d'une date anniversaire à la suivante.
-     Fin novembre et décembre de l'année civile précédente vont dans `MM (AAAA)`, par exemple
-     `2026/12 (2025)/`, pour ne pas se mêler au même mois de l'année suivante.
-   - Employeur : toujours lu dans le texte du document (bulletin, AEM, certificat de congés,
-     contrat), jamais déduit du nom du dossier. Les documents d'un même SIREN prennent le même nom ;
-     un nom se corrige une fois dans le tableau « employeurs lus dans les documents ».
-   - Date : début du contrat (AEM, contrat, contrat rattaché), jamais la date de paie.
-   - Restent en place, listés « à vérifier » : `Ressource`, les fichiers non PDF/image, ceux pas
-     encore importés, ceux dont l'employeur ou la date ne se lit pas dans le document.
-2. **Ranger N fichiers** : fichier par fichier, avec une barre de progression.
-3. **Annuler le dernier rangement** remet chaque fichier à sa place et sous son ancien nom.
-4. **Dossiers vides à la corbeille** : les anciens dossiers vidés partent dans la corbeille kDrive
-   (récupérables).
-
-Les dates anniversaire se règlent dans l'onglet **Historique**. Après l'anniversaire de l'année
-en cours, relance le rangement : l'année qui se termine part dans `Archive`.
-
 ## Développement local
 
 ```sh
