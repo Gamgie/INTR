@@ -75,7 +75,10 @@ function readGhsPayslip(text: string): Figures {
 	if (cachets) figures.cachets = cachets;
 	if (baseDays) figures.days = baseDays;
 
-	if (baseHours) {
+	if (itemHours && cachets) {
+		// Journées ou services en heures, plus des cachets à 12 h.
+		figures.hours = itemHours + cachets * HOURS_PER_CACHET;
+	} else if (baseHours) {
 		// Certains employeurs convertissent déjà les cachets en heures dans le récapitulatif
 		// (4 cachets, BASE Heures 48), d'autres non (4 journées de 6 h et 3 cachets, BASE Heures 24).
 		figures.hours =
@@ -173,7 +176,7 @@ function combine(list: Figures[]) {
 }
 
 // Recalcule heures, cachets, brut et net d'un contrat à partir de ses documents :
-// bulletin d'abord, AEM ensuite. Les champs qu'aucun document ne permet de lire restent tels quels.
+// heures de l'AEM, montants du bulletin. Les champs qu'aucun document ne permet de lire restent tels quels.
 export function consolidateContract(contract: Contract, documents: ContractDocument[]): Consolidation {
 	const own = documents.filter((document) => contract.documentIds.includes(document.id));
 	const read = (kind: DocumentKind) =>
@@ -188,10 +191,12 @@ export function consolidateContract(contract: Contract, documents: ContractDocum
 	const fields: Partial<ContractFields> = {};
 	const sources: string[] = [];
 
-	const hourSource = payslips.some((figures) => figures.hours)
-		? payslips
-		: aems.some((figures) => figures.hours)
-			? aems
+	// Heures : celles de l'AEM, c'est ce que l'employeur déclare à France Travail (heures plus
+	// cachets à 12 h) ; le récapitulatif du bulletin compte parfois les cachets autrement.
+	const hourSource = aems.some((figures) => figures.hours)
+		? aems
+		: payslips.some((figures) => figures.hours)
+			? payslips
 			: [];
 	if (hourSource.length) {
 		fields.hours = sum(hourSource.map((figures) => figures.hours));
