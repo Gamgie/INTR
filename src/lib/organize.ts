@@ -55,6 +55,8 @@ export type OrganizeMove = {
 	type: string;
 	/** D'où vient la date : analyse de l'import ou nom du fichier. */
 	basis: 'analyse' | 'nom du fichier';
+	/** Raison de vérifier la date à la main, s'il y en a une. */
+	dateWarning: string;
 };
 
 export type OrganizeSkip = { fileId: number; path: string; reason: string };
@@ -173,6 +175,7 @@ type Classification = {
 	basis: OrganizeMove['basis'];
 	/** Faux quand seul le mois est connu (nom « 05.2022 », dossier « 2024/06 »). */
 	dayKnown?: boolean;
+	dateWarning?: string;
 };
 
 
@@ -260,6 +263,20 @@ function classify(
 	}
 
 	const dates = [contractDates, linkedDates, periodDates].find((group) => group.length) ?? [];
+	// Date tirée seulement du contrat rattaché par l'import, en désaccord avec l'année écrite dans le
+	// nom ou le chemin du fichier : probablement un mauvais rattachement.
+	let dateWarning = '';
+	if (dates === linkedDates && dates.length) {
+		const hint = parseTextDate(file.name) ?? parseTextDate(file.path);
+		const hintedYear = hint?.date.slice(0, 4) ?? /(?:^|\/)(20\d{2})(?:\/|$)/.exec(file.path)?.[1];
+		const yymm = /(?:^|[^\d])(2\d)(0[1-9]|1[0-2])(?:[^\d]|$)/.exec(file.name);
+		const hintYear = hintedYear ?? (yymm ? `20${yymm[1]}` : '');
+		const acceptable = (value: string) =>
+			value.startsWith(hintYear) || String(yearOfDate(data, value) ?? '') === hintYear;
+		if (hintYear && !dates.some(acceptable)) {
+			dateWarning = `date prise sur le contrat rattaché, mais le fichier indique ${hintYear}`;
+		}
+	}
 	if (!dates.length) return { skip: 'aucune date de contrat trouvée' };
 	if (!employer) return { skip: 'employeur introuvable dans le texte du document : à vérifier' };
 
@@ -268,6 +285,7 @@ function classify(
 	return {
 		date,
 		dayKnown: !monthOnly.has(date),
+		dateWarning,
 		employer,
 		employerSource,
 		siren,
@@ -316,6 +334,10 @@ export function buildOrganizePlan(
 		const found = classify(data, file, directory, readings);
 		if ('skip' in found) {
 			skipped.push({ fileId: file.id, path: file.path, reason: found.skip });
+			continue;
+		}
+		if (found.dateWarning) {
+			skipped.push({ fileId: file.id, path: file.path, reason: `date à vérifier : ${found.dateWarning}` });
 			continue;
 		}
 
@@ -370,6 +392,7 @@ export function buildOrganizePlan(
 			date: item.found.date,
 			employer: item.found.employer,
 			employerSource: item.found.employerSource,
+			dateWarning: item.found.dateWarning ?? '',
 			type: item.found.type,
 			basis: item.found.basis
 		});

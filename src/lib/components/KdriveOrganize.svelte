@@ -41,7 +41,7 @@
 	}
 
 	let plan = $state<Plan | null>(null);
-	let busy = $state<'' | 'plan' | 'apply' | 'undo' | 'empty'>('');
+	let busy = $state<'' | 'plan' | 'apply' | 'undo' | 'empty' | 'reread'>('');
 	let message = $state('');
 	let stopRequested = $state(false);
 	let progress = $state({ done: 0, total: 0, errors: 0 });
@@ -162,6 +162,51 @@
 		message = `Rangement annulé : ${progress.done - progress.errors} fichiers remis en place, ${progress.errors} erreurs.`;
 	}
 
+	// Documents importés avec l'ancien extrait court (1 200 caractères) : à relire pour y trouver
+	// employeur et date de contrat.
+	let shortTexts = $derived(
+		app.appData.documents.filter((document) => (document.extractedTextPreview ?? '').length <= 1203)
+	);
+	let dateWarnings = $derived(plan?.moves.filter((move) => move.dateWarning).length ?? 0);
+
+	async function rereadDocuments() {
+		const ids = shortTexts.map((document) => document.id);
+		busy = 'reread';
+		failures = [];
+		progress = { done: 0, total: ids.length, errors: 0 };
+		for (let index = 0; index < ids.length; index += 5) {
+			const batch = ids.slice(index, index + 5);
+			try {
+				const response = await fetch(`${base}/api/documents/reread`, {
+					method: 'POST',
+					headers: { 'content-type': 'application/json' },
+					body: JSON.stringify({ ids: batch })
+				});
+				const payload = (await response.json().catch(() => ({}))) as {
+					failures?: { id: string; message: string }[];
+					message?: string;
+				};
+				if (!response.ok) {
+					progress.errors += batch.length;
+					failures.push({ path: `lot ${index / 5 + 1}`, message: payload.message ?? `Erreur ${response.status}` });
+				}
+				for (const failure of payload.failures ?? []) {
+					progress.errors += 1;
+					failures.push({ path: failure.id, message: failure.message });
+				}
+			} catch {
+				progress.errors += batch.length;
+				failures.push({ path: `lot ${index / 5 + 1}`, message: 'Erreur réseau.' });
+			}
+			progress.done += batch.length;
+		}
+		const fresh = await fetch(`${base}/api/data`).then((response) => response.json()).catch(() => null);
+		if (fresh) app.appData = fresh;
+		busy = '';
+		message = `Textes relus : ${progress.done - progress.errors} documents, ${progress.errors} erreurs.`;
+		if (plan) await preparePlan();
+	}
+
 	async function trashEmpty() {
 		busy = 'empty';
 		try {
@@ -203,6 +248,17 @@
 	{#if !folder()}
 		<p class="muted">Lis d’abord ton dossier dans « Import depuis kDrive » ci-dessus.</p>
 	{:else}
+		{#if shortTexts.length}
+			<p class="muted">
+				{shortTexts.length} documents ont été importés avec un texte court : relis-les d’abord pour
+				que l’employeur et la date du contrat y soient mieux trouvés (quelques minutes).
+			</p>
+			<div class="button-row">
+				<button type="button" onclick={rereadDocuments} disabled={busy !== ''}>
+					{busy === 'reread' ? 'Relecture...' : `Relire ${shortTexts.length} documents`}
+				</button>
+			</div>
+		{/if}
 		<div class="button-row">
 			<button type="button" onclick={preparePlan} disabled={busy !== ''}>
 				{busy === 'plan' ? 'Préparation...' : 'Préparer le rangement'}
@@ -220,7 +276,7 @@
 
 	{#if message}<p class="muted">{message}</p>{/if}
 
-	{#if busy === 'apply' || busy === 'undo'}
+	{#if busy === 'apply' || busy === 'undo' || busy === 'reread'}
 		<div class="progress-line">
 			<progress max={progress.total} value={progress.done}></progress>
 			<small>{progress.done} / {progress.total}</small>
@@ -261,6 +317,10 @@
 		<p class="muted">
 			Aperçu : {plan.moves.length} à ranger, {plan.unchanged} déjà en place,
 			{plan.skipped.length} laissés où ils sont. L’année en cours est {plan.currentYear}.
+			{#if dateWarnings}
+				<strong class="warn">{dateWarnings} date{dateWarnings > 1 ? 's' : ''} à vérifier</strong> (marquées
+				ci-dessous).
+			{/if}
 
 		</p>
 		{#each byDestination as [destination, moves] (destination)}
@@ -272,6 +332,7 @@
 							<span class="from">{move.fromPath}</span>
 							<span class="to">→ {move.toPath}</span>
 							<small>employeur lu : {SOURCE_LABEL[move.employerSource] ?? move.employerSource}</small>
+							{#if move.dateWarning}<small class="warn">Date à vérifier : {move.dateWarning}</small>{/if}
 						</li>
 					{/each}
 				</ul>

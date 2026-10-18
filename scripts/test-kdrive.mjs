@@ -174,10 +174,10 @@ try {
 
 	// --- Import from a kDrive source folder shaped like Clément's « Intermittence » ---
 	const source = kdrive.addDir(1, 'Intermittence');
-	const y2025 = kdrive.addDir(source.id, '2025');
+	const y2026 = kdrive.addDir(source.id, '2026');
 	const archive = kdrive.addDir(source.id, 'Archive');
-	kdrive.addFile(y2025.id, 'contrat-octobre.pdf', await scannedContractPdf('Compagnie Source', 0, 10, 20));
-	kdrive.addFile(y2025.id, 'contrat-novembre.pdf', await scannedContractPdf('Compagnie Source', 0, 11, 20));
+	kdrive.addFile(y2026.id, 'contrat-octobre.pdf', await scannedContractPdf('Compagnie Source', 0, 10, 20));
+	kdrive.addFile(y2026.id, 'contrat-novembre.pdf', await scannedContractPdf('Compagnie Source', 0, 11, 20));
 	kdrive.addFile(archive.id, 'vieux.pdf', await scannedContractPdf('Compagnie Archive', 0, 12));
 	kdrive.addFile(source.id, 'Déclaration.xlsx', 'pas un pdf');
 	// The app's own folder stored inside the source must never be re-imported.
@@ -191,8 +191,8 @@ try {
 	assert.deepEqual(
 		scanned.files.map((file) => [file.path, file.importable]),
 		[
-			['2025/contrat-novembre.pdf', true],
-			['2025/contrat-octobre.pdf', true],
+			['2026/contrat-novembre.pdf', true],
+			['2026/contrat-octobre.pdf', true],
 			['Archive/vieux.pdf', true],
 			['Déclaration.xlsx', false]
 		],
@@ -200,7 +200,7 @@ try {
 	);
 
 	const before = (await (await call('/api/data')).json()).contracts.length;
-	for (const file of scanned.files.filter((item) => item.group === '2025')) {
+	for (const file of scanned.files.filter((item) => item.group === '2026')) {
 		const response = await call('/api/kdrive/import', {
 			method: 'POST',
 			body: JSON.stringify({ fileId: file.id, path: file.path }),
@@ -221,11 +221,11 @@ try {
 	const rescan = await (await call(`/api/kdrive/source?folder=${source.id}`)).json();
 	assert.deepEqual(
 		rescan.files.filter((file) => file.status === 'importé').map((file) => file.path),
-		['2025/contrat-novembre.pdf', '2025/contrat-octobre.pdf'],
+		['2026/contrat-novembre.pdf', '2026/contrat-octobre.pdf'],
 		'statut d’import conservé pour la relance'
 	);
 	assert.ok(
-		kdrive.nodes.get(scanned.files[0].id).data.length > 0 && !kdrive.trash.some((node) => node.parent_id === y2025.id),
+		kdrive.nodes.get(scanned.files[0].id).data.length > 0 && !kdrive.trash.some((node) => node.parent_id === y2026.id),
 		'originaux intacts'
 	);
 
@@ -239,13 +239,13 @@ try {
 		const plan = await planResponse.json();
 		assert.equal(planResponse.status, 200, `plan: ${plan.message}`);
 		const targets = Object.fromEntries(plan.moves.map((move) => [move.fromPath, move.toPath]));
-		assert.ok(targets['2025/contrat-octobre.pdf'], 'contrat d’octobre à ranger');
+		assert.ok(targets['2026/contrat-octobre.pdf'], 'contrat d’octobre à ranger');
 		assert.ok(!targets['Archive/[AEM] 2024-11-09 Baron Production.pdf'], 'non importé : laissé en place');
 		assert.match(
 			plan.skipped.find((skip) => skip.path === 'Archive/[AEM] 2024-11-09 Baron Production.pdf')?.reason ?? '',
 			/pas encore importé/
 		);
-		assert.match(targets['2025/contrat-octobre.pdf'], /\/Compagnie Source\/\[CT\] 2026-10-20 Compagnie Source\.pdf$/, 'employeur lu par OCR');
+		assert.match(targets['2026/contrat-octobre.pdf'], /\/Compagnie Source\/\[CT\] 2026-10-20 Compagnie Source\.pdf$/, 'employeur lu par OCR');
 		assert.ok(plan.skipped.some((skip) => skip.path === 'Déclaration.xlsx'), 'tableur laissé');
 
 		const before = plan.moves.map((move) => [move.fileId, intoTree(move.fileId)]);
@@ -290,7 +290,7 @@ try {
 			headers: { 'content-type': 'application/json' }
 		})).json();
 		assert.ok(emptied.ok, emptied.message);
-		assert.ok(emptied.trashed.includes('2025') && emptied.trashed.includes('Archive2'), `dossiers vides: ${emptied.trashed}`);
+		assert.ok(emptied.trashed.includes('Archive2') && !emptied.trashed.includes('2026'), `dossiers vides: ${emptied.trashed}`);
 		assert.ok(!emptied.trashed.includes('Archive'), 'Archive garde ses fichiers');
 		assert.ok(kdrive.nodes.has(loose.id) && kdrive.nodes.has(clash.id) === false, 'fichiers intacts, dossier vide à la corbeille');
 	}
@@ -307,6 +307,26 @@ try {
 	assert.equal(deepScan.files.length, 36, `arborescence profonde lue en entier (${deepScan.files.length})`);
 	assert.ok(deepScan.files.some((file) => file.path === '2024/Bulletins/Mars/cachet-11.PDF' && file.importable));
 	assert.ok(deepScan.files.every((file) => file.group === '2024'));
+
+	// --- Reread stored documents (batch, one database write) ---
+	{
+		const current = await (await call('/api/data')).json();
+		const ids = current.documents.slice(0, 2).map((document) => document.id);
+		const response = await call('/api/documents/reread', {
+			method: 'POST',
+			body: JSON.stringify({ ids }),
+			headers: { 'content-type': 'application/json' }
+		});
+		const payload = await response.json();
+		assert.equal(response.status, 200, `relecture: ${payload.message}`);
+		assert.equal(payload.reread, 2, `deux documents relus (${JSON.stringify(payload.failures)})`);
+		const tooMany = await call('/api/documents/reread', {
+			method: 'POST',
+			body: JSON.stringify({ ids: current.documents.slice(0, 6).map((document) => document.id) }),
+			headers: { 'content-type': 'application/json' }
+		});
+		assert.equal(tooMany.status, 400, 'lots limités à 5');
+	}
 
 	// --- Diagnostic and readable errors ---
 	const diagnostic = await call('/diagnostic');

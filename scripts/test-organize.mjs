@@ -48,7 +48,9 @@ try {
 			// Rien de lisible : à vérifier, jamais rangé au hasard.
 			doc('x1', 'k4', 'Déclaration Guso', ', , , , TOUTES VOS DÉMARCHES SUR : E M P L O Y E U R'),
 			// Une page de contrat prise pour une notification ARE ne change pas le code.
-			doc('c1', 'k4', 'Contrat', `Entre les soussignés CIE 32 NOVEMBRE 2 bis rue des cols verts 74940 Annecy Siret : ${spaced(CIE)}`)
+			doc('c1', 'k4', 'Contrat', `Entre les soussignés CIE 32 NOVEMBRE 2 bis rue des cols verts 74940 Annecy Siret : ${spaced(CIE)}`),
+			// Rattaché à un contrat de 2020 alors que le fichier indique 2022 : laissé en place.
+			doc('m1', 'k1', 'Contrat', `Entre les soussignés VILLE DE RENNES - OPERA, Siret ${OPERA}`)
 		],
 		periods: [{ id: 'p1', admissionDate: '2026-07-20', anniversaryDate: '2027-07-19' }],
 		monthlyInfos: [],
@@ -59,7 +61,8 @@ try {
 			imported(4, ['f1', 'f2']),
 			imported(5, ['w1']),
 			imported(6, ['x1']),
-			imported(7, ['c1'], ['p1'])
+			imported(7, ['c1'], ['p1']),
+			imported(11, ['m1'])
 		],
 		settings: { activePeriodId: '', anniversaries: { 2026: '2026-11-15' }, employerNames: {} }
 	};
@@ -73,7 +76,8 @@ try {
 		file(7, '2026/07/Cie 32 Novembre/[CTT] 2026-07-20 CIE32NOVEMBRE.pdf'),
 		file(8, 'Archive/2024/pas-importe.pdf'),
 		file(9, 'Ressource/guide.pdf'),
-		file(10, 'Déclaration.xlsx', false)
+		file(10, 'Déclaration.xlsx', false),
+		file(11, 'Archive/2022/Autre/2201 CONTRAT.pdf')
 	];
 
 	const plan = buildOrganizePlan(data, files, today);
@@ -91,6 +95,7 @@ try {
 	assert.match(reasons[8], /pas encore importé/);
 	assert.match(reasons[9], /Ressource/);
 	assert.match(reasons[10], /format non analysé/);
+	assert.match(reasons[11], /date à vérifier : .*2022/);
 
 	assert.deepEqual(
 		plan.employers.map((employer) => [employer.name, employer.files]),
