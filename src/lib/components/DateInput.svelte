@@ -1,7 +1,10 @@
 <script lang="ts">
 	import { formatIsoDateFr, parseFrenchDate } from '$lib/date';
 
-	let { value = $bindable('') }: { value: string } = $props();
+	let {
+		value = $bindable(''),
+		onchange
+	}: { value: string; onchange?: (value: string) => void } = $props();
 
 	let focused = $state(false);
 	let invalid = $state(false);
@@ -19,6 +22,7 @@
 			value = '';
 			display = '';
 			invalid = false;
+			onchange?.('');
 			return;
 		}
 
@@ -31,6 +35,7 @@
 		value = parsed;
 		display = formatIsoDateFr(parsed);
 		invalid = false;
+		onchange?.(parsed);
 	}
 </script>
 

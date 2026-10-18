@@ -3,6 +3,7 @@
 
 	import type { IntrState } from '$lib/app/state.svelte';
 	import DocumentPresence from '$lib/components/DocumentPresence.svelte';
+	import YearPicker from '$lib/components/YearPicker.svelte';
 	import { requiredContractDocuments, summarizeContractDocuments } from '$lib/documentPresence';
 	import { formatCurrency, formatDate, formatNumber, formatPreciseCurrency } from '$lib/format';
 	import { buildMonthlyContractBreakdown, monthLabel } from '$lib/stats';
@@ -71,11 +72,6 @@
 			: [...openMonths, month];
 	}
 
-	function changePeriod(periodId: string) {
-		openMonths = [];
-		appState.selectPeriod(periodId);
-	}
-
 	function toggleAllMonths() {
 		openMonths = allMonthsOpen ? [] : visibleMonthlyStats.map((stats) => stats.month);
 	}
@@ -94,18 +90,7 @@
 	<div class="panel-heading">
 		<h3>Statistiques mensuelles</h3>
 		<div class="stats-actions">
-			<label class="period-picker">
-				<span>Année d’intermittence</span>
-				<select
-					value={appState.appData.settings.activePeriodId}
-					onchange={(event) => changePeriod(event.currentTarget.value)}
-				>
-					<option value="">Global / sans compartiment</option>
-					{#each appState.appData.periods as period}
-						<option value={period.id}>{period.label}</option>
-					{/each}
-				</select>
-			</label>
+			<YearPicker state={appState} />
 			<button type="button" onclick={toggleAllMonths} disabled={visibleMonthlyStats.length === 0}>
 				{allMonthsOpen ? 'Replier tout' : 'Déplier tout'}
 			</button>

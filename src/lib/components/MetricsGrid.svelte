@@ -7,7 +7,10 @@
 
 <section class="metrics-grid" aria-label="Indicateurs principaux">
 	<div class="metric">
-		<span>Heures période</span>
+		<span>
+			Heures {state.selectedYear ? state.selectedYear.year : 'toutes années'}
+			{#if state.selectedYear?.isCurrent}(en cours){/if}
+		</span>
 		<strong>{formatNumber(state.reference.hours, 0)} h</strong>
 		<progress value={state.reference.hours} max={state.appData.settings.targetHours}></progress>
 		<small>
@@ -30,8 +33,12 @@
 		</small>
 	</div>
 	<div class="metric">
-		<span>AJ estimée</span>
+		<span>{state.activePeriod?.dailyAllowance ? 'AJ notifiée' : 'AJ estimée'}</span>
 		<strong>{formatPreciseCurrency(state.dailyAllowance)}</strong>
-		<small>Constantes modifiables</small>
+		<small>
+			{state.activePeriod?.dailyAllowance
+				? 'Notification ARE de l’année'
+				: `Formule ${state.appData.settings.annex}`}
+		</small>
 	</div>
 </section>

@@ -1,4 +1,5 @@
 import { dailyAllowance, monthlyPayment, normalizeAnnex } from '$lib/rules';
+import { selectedIntermittenceYear, yearAsPeriod } from '$lib/years';
 import type {
 	AppData,
 	Contract,
@@ -72,8 +73,13 @@ function parseDate(value: string) {
 	return Number.isNaN(date.getTime()) ? undefined : date;
 }
 
+/**
+ * Période des calculs : par défaut l'année d'intermittence en cours (bornée par les dates
+ * anniversaire), une autre année si elle est choisie, aucune borne pour « toutes les années ».
+ */
 export function getActivePeriod(data: AppData) {
-	return (data.periods ?? []).find((period) => period.id === data.settings.activePeriodId);
+	const year = selectedIntermittenceYear(data);
+	return year ? yearAsPeriod(year) : undefined;
 }
 
 function getPeriodStart(period: IntermittencePeriod) {

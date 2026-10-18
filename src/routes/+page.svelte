@@ -4,6 +4,7 @@
 	import MetricsGrid from '$lib/components/MetricsGrid.svelte';
 	import CalendarView from '$lib/components/views/CalendarView.svelte';
 	import ContractsView from '$lib/components/views/ContractsView.svelte';
+	import HistoryView from '$lib/components/views/HistoryView.svelte';
 	import IntermittenceView from '$lib/components/views/IntermittenceView.svelte';
 	import PilotageView from '$lib/components/views/PilotageView.svelte';
 	import StatsView from '$lib/components/views/StatsView.svelte';
@@ -26,10 +27,14 @@
 </svelte:head>
 
 <AppShell {state}>
-	<MetricsGrid {state} />
+	{#if state.activeTab !== 'historique'}
+		<MetricsGrid {state} />
+	{/if}
 
 	{#if state.activeTab === 'pilotage'}
 		<PilotageView {state} />
+	{:else if state.activeTab === 'historique'}
+		<HistoryView {state} />
 	{:else if state.activeTab === 'calendrier'}
 		<CalendarView {state} />
 	{:else if state.activeTab === 'contrats'}

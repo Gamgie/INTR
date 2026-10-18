@@ -105,10 +105,8 @@ export const POST: RequestHandler = async ({ request, url }) => {
 		if (existingPeriod) period.id = existingPeriod.id;
 
 		current.periods = [period, ...current.periods.filter((item) => item.id !== period.id)];
-		current.settings.activePeriodId = period.id;
 
 		if (period.referenceStartDate) current.settings.referenceStartDate = period.referenceStartDate;
-		if (period.dailyAllowance) current.settings.minDailyAllowance = period.dailyAllowance;
 
 		return current;
 	});

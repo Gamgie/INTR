@@ -12,7 +12,7 @@ import type {
 	Project
 } from '$lib/types';
 
-import { normalizeAnnex } from '$lib/rules';
+import { COMMON, normalizeAnnex } from '$lib/rules';
 import { persistence } from '$lib/server/persistence';
 
 export { dataDir, documentDir } from '$lib/server/persistence';
@@ -101,7 +101,9 @@ export function createDefaultData(): AppData {
 			remoteSyncEnabled: false,
 			remoteLastSyncAt: '',
 			remoteLastSyncStatus: 'Synchronisation distante non activée',
-			kdriveSourceFolder: ''
+			kdriveSourceFolder: '',
+			anniversaries: { '2026': '2026-11-15' },
+			ownerFirstName: 'Clément'
 		}
 	};
 }
@@ -260,6 +262,28 @@ function normalizeMonthlyInfo(info: Partial<MonthlyInfo>): MonthlyInfo {
 	};
 }
 
+// Les anciennes versions remplaçaient l'AJ minimale (paramètre de la formule, art. 14) par
+// l'AJ notifiée à chaque import de notification ARE. On rétablit la valeur du texte.
+function repairMinDailyAllowance(value: unknown, periods: unknown) {
+	const current = normalizeNumber(value);
+	const notified = Array.isArray(periods)
+		? periods.map((period) => normalizeNumber((period as Partial<IntermittencePeriod>).dailyAllowance))
+		: [];
+	if (!current || (current > COMMON.minDailyAllowance && notified.includes(current))) {
+		return COMMON.minDailyAllowance;
+	}
+	return current;
+}
+
+function normalizeAnniversaries(value: unknown): Record<string, string> {
+	if (!value || typeof value !== 'object') return {};
+	return Object.fromEntries(
+		Object.entries(value as Record<string, unknown>).filter(
+			([year, date]) => /^\d{4}$/.test(year) && typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)
+		) as [string, string][]
+	);
+}
+
 function normalizeKdriveImport(item: Partial<KdriveImport>): KdriveImport {
 	return {
 		fileId: normalizeNumber(item.fileId),
@@ -298,9 +322,10 @@ export function normalizeData(input: Partial<AppData>): AppData {
 			...settings,
 			annex: normalizeAnnex(settings.annex),
 			kdriveSourceFolder: cleanString(settings.kdriveSourceFolder),
+			anniversaries: normalizeAnniversaries(settings.anniversaries),
+			ownerFirstName: cleanString(settings.ownerFirstName) || 'Clément',
 			targetHours: normalizeNumber(settings.targetHours) || defaults.settings.targetHours,
-			minDailyAllowance:
-				normalizeNumber(settings.minDailyAllowance) || defaults.settings.minDailyAllowance,
+			minDailyAllowance: repairMinDailyAllowance(settings.minDailyAllowance, input.periods),
 			smicHourlyGross:
 				normalizeNumber(settings.smicHourlyGross) || defaults.settings.smicHourlyGross,
 			annex8SalaryCoefficient:

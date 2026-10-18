@@ -714,12 +714,8 @@ async function importDocument({ request, url }: Parameters<RequestHandler>[0]) {
 					(period) => !preparedPeriods.some((created) => created.id === period.id)
 				)
 			];
-			current.settings.activePeriodId = preparedPeriods[0].id;
 			if (preparedPeriods[0].referenceStartDate) {
 				current.settings.referenceStartDate = preparedPeriods[0].referenceStartDate;
-			}
-			if (preparedPeriods[0].dailyAllowance) {
-				current.settings.minDailyAllowance = preparedPeriods[0].dailyAllowance;
 			}
 		}
 

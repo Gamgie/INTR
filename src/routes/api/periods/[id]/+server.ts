@@ -18,16 +18,7 @@ export const DELETE: RequestHandler = async ({ params }) => {
 		current.periods = remainingPeriods;
 		current.monthlyInfos = current.monthlyInfos.filter((info) => info.periodId !== periodId);
 
-		if (current.settings.activePeriodId === periodId) {
-			const nextPeriod = remainingPeriods[0];
-			current.settings.activePeriodId = nextPeriod?.id ?? '';
-			if (nextPeriod.referenceStartDate) {
-				current.settings.referenceStartDate = nextPeriod.referenceStartDate;
-			}
-			if (nextPeriod.dailyAllowance) {
-				current.settings.minDailyAllowance = nextPeriod.dailyAllowance;
-			}
-		}
+		if (current.settings.activePeriodId === periodId) current.settings.activePeriodId = '';
 
 		return current;
 	});

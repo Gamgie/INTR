@@ -11,6 +11,13 @@ import {
 	round
 } from '$lib/stats';
 import { appendFile } from '$lib/app/uploadFile';
+import {
+	ALL_YEARS,
+	intermittenceYears,
+	selectedIntermittenceYear,
+	YEAR_PREFIX,
+	type IntermittenceYear
+} from '$lib/years';
 import { defaultCompanyColor, normalizeCompanyColor } from '$lib/companyColors';
 import type {
 	AppData,
@@ -27,10 +34,18 @@ import type {
 	Project
 } from '$lib/types';
 
-export type Tab = 'pilotage' | 'calendrier' | 'contrats' | 'structures' | 'stats' | 'intermittence';
+export type Tab =
+	| 'pilotage'
+	| 'historique'
+	| 'calendrier'
+	| 'contrats'
+	| 'structures'
+	| 'stats'
+	| 'intermittence';
 
 export const tabs: { id: Tab; label: string }[] = [
 	{ id: 'pilotage', label: 'Dashboard' },
+	{ id: 'historique', label: 'Historique' },
 	{ id: 'calendrier', label: 'Calendrier' },
 	{ id: 'contrats', label: 'Contrats' },
 	{ id: 'structures', label: 'Structures' },
@@ -217,11 +232,11 @@ export function createIntrState(initialData: AppData) {
 	const initialSnapshot = structuredClone(initialData);
 	const initialMonth = currentMonthKey();
 
-	if (
-		initialSnapshot.periods.length &&
-		!initialSnapshot.periods.some((period) => period.id === initialSnapshot.settings.activePeriodId)
-	) {
-		initialSnapshot.settings.activePeriodId = initialSnapshot.periods[0].id;
+	// L'app s'ouvre toujours sur l'année d'intermittence en cours, sauf choix explicite d'une
+	// année (« year:2025 ») ou de toutes les années (« all »).
+	const savedSelection = initialSnapshot.settings.activePeriodId;
+	if (savedSelection !== ALL_YEARS && !savedSelection.startsWith(YEAR_PREFIX)) {
+		initialSnapshot.settings.activePeriodId = '';
 	}
 
 	let appData = $state<AppData>(initialSnapshot);
@@ -244,6 +259,10 @@ export function createIntrState(initialData: AppData) {
 	let changeRevision = $state(0);
 
 	let activePeriod = $derived(getActivePeriod(appData));
+	let selectedYear = $derived(selectedIntermittenceYear(appData));
+	let years = $derived(intermittenceYears(appData));
+	/** Notification ARE de l'année choisie, modifiable dans l'onglet Intermittence. */
+	let activeNotification = $derived(selectedYear?.notification);
 	let monthlyStats = $derived(buildMonthlyStats(appData));
 	let periodStats = $derived(buildPeriodStats(appData));
 	let timelineMonths = $derived(buildTimelineMonths(appData));
@@ -310,14 +329,20 @@ export function createIntrState(initialData: AppData) {
 		return info;
 	}
 
+	// periodId : '' (année en cours), 'year:AAAA' ou 'all'. L'AJ minimale n'est plus remplacée
+	// par l'AJ notifiée : l'AJ notifiée vient directement de la notification de l'année.
 	function selectPeriod(periodId: string) {
 		appData.settings.activePeriodId = periodId;
-		const period = appData.periods.find((item) => item.id === periodId);
-		if (!period) return;
-		if (period.referenceStartDate) appData.settings.referenceStartDate = period.referenceStartDate;
-		if (period.dailyAllowance) appData.settings.minDailyAllowance = period.dailyAllowance;
-		ensureMonthlyInfo(selectedMonth);
+		const year = selectedIntermittenceYear(appData);
+		if (year && !isMonthInYear(selectedMonth, year)) {
+			const today = currentMonthKey();
+			selectedMonth = isMonthInYear(today, year) ? today : year.end.slice(0, 7);
+		}
 		touch();
+	}
+
+	function isMonthInYear(month: string, year: IntermittenceYear) {
+		return month >= year.start.slice(0, 7) && month <= year.end.slice(0, 7);
 	}
 
 	function companyName(id: string) {
@@ -1189,6 +1214,15 @@ export function createIntrState(initialData: AppData) {
 		},
 		get changeRevision() {
 			return changeRevision;
+		},
+		get selectedYear() {
+			return selectedYear;
+		},
+		get years() {
+			return years;
+		},
+		get activeNotification() {
+			return activeNotification;
 		},
 		get activePeriod() {
 			return activePeriod;

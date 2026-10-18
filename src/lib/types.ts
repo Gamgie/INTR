@@ -152,6 +152,10 @@ export type AppSettings = {
 	remoteSyncEnabled: boolean;
 	remoteLastSyncAt: string;
 	remoteLastSyncStatus: string;
+	/** Dates anniversaire saisies à la main, par année d'intermittence ({ "2026": "2026-11-15" }). */
+	anniversaries: Record<string, string>;
+	/** Prénom utilisé dans les noms de fichiers rangés. */
+	ownerFirstName: string;
 	/** kDrive folder (URL or id) holding the original documents to import. */
 	kdriveSourceFolder: string;
 };

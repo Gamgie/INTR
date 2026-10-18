@@ -4,6 +4,7 @@
 	import type { IntrState } from '$lib/app/state.svelte';
 	import DateInput from '$lib/components/DateInput.svelte';
 	import KdriveImport from '$lib/components/KdriveImport.svelte';
+	import YearPicker from '$lib/components/YearPicker.svelte';
 	import { formatCurrency, formatNumber, formatPreciseCurrency } from '$lib/format';
 	import { ANNEXES, RULES } from '$lib/rules';
 	import { estimateDailyAllowanceDetail } from '$lib/stats';
@@ -40,26 +41,23 @@
 				<p class="analysis-note">{state.areUploadState}</p>
 			{/if}
 			<div class="form-grid tight">
-				<label class="wide">
-					<span>Année d’intermittence active</span>
-					<select
-						value={state.appData.settings.activePeriodId}
-						onchange={(event) => state.selectPeriod(event.currentTarget.value)}
-					>
-						<option value="">Global / sans compartiment</option>
-						{#each state.appData.periods as period}
-							<option value={period.id}>{period.label}</option>
-						{/each}
-					</select>
-				</label>
-				{#if state.activePeriod}
+				<div class="wide">
+					<YearPicker {state} label="Année d’intermittence affichée" />
+				</div>
+				{#if !state.activeNotification && state.selectedYear}
+					<p class="wide analysis-note">
+						Aucune notification ARE pour l’année {state.selectedYear.year}. Importe-la pour
+						utiliser l’allocation notifiée dans les calculs.
+					</p>
+				{/if}
+				{#if state.activeNotification}
 					<label>
 						<span>Libellé</span>
-						<input bind:value={state.activePeriod.label} />
+						<input bind:value={state.activeNotification.label} />
 					</label>
 					<label>
 						<span>Statut</span>
-						<select bind:value={state.activePeriod.status}>
+						<select bind:value={state.activeNotification.status}>
 							<option value="Estimation">Estimation</option>
 							<option value="Notifie">Notifié</option>
 							<option value="Archive">Archivé</option>
@@ -67,15 +65,15 @@
 					</label>
 					<label>
 						<span>Admission</span>
-						<DateInput bind:value={state.activePeriod.admissionDate} />
+						<DateInput bind:value={state.activeNotification.admissionDate} />
 					</label>
 					<label>
 						<span>Début indemnisation</span>
-						<DateInput bind:value={state.activePeriod.indemnizationStartDate} />
+						<DateInput bind:value={state.activeNotification.indemnizationStartDate} />
 					</label>
 					<label>
 						<span>Date anniversaire</span>
-						<DateInput bind:value={state.activePeriod.anniversaryDate} />
+						<DateInput bind:value={state.activeNotification.anniversaryDate} />
 					</label>
 					<label>
 						<span>Allocation journalière</span>
@@ -83,28 +81,28 @@
 							type="number"
 							min="0"
 							step="0.01"
-							bind:value={state.activePeriod.dailyAllowance}
+							bind:value={state.activeNotification.dailyAllowance}
 						/>
 					</label>
 					<label>
 						<span>Référence début</span>
-						<DateInput bind:value={state.activePeriod.referenceStartDate} />
+						<DateInput bind:value={state.activeNotification.referenceStartDate} />
 					</label>
 					<label>
 						<span>Référence fin</span>
-						<DateInput bind:value={state.activePeriod.referenceEndDate} />
+						<DateInput bind:value={state.activeNotification.referenceEndDate} />
 					</label>
 					<label>
 						<span>Heures retenues</span>
-						<input type="number" min="0" step="0.25" bind:value={state.activePeriod.hours} />
+						<input type="number" min="0" step="0.25" bind:value={state.activeNotification.hours} />
 					</label>
 					<label>
 						<span>Salaire brut retenu</span>
-						<input type="number" min="0" step="0.01" bind:value={state.activePeriod.grossSalary} />
+						<input type="number" min="0" step="0.01" bind:value={state.activeNotification.grossSalary} />
 					</label>
 					<label>
 						<span>Délai attente</span>
-						<input type="number" min="0" step="1" bind:value={state.activePeriod.waitingDays} />
+						<input type="number" min="0" step="1" bind:value={state.activeNotification.waitingDays} />
 					</label>
 					<label>
 						<span>Franchise salaire</span>
@@ -112,7 +110,7 @@
 							type="number"
 							min="0"
 							step="1"
-							bind:value={state.activePeriod.salaryFranchiseDays}
+							bind:value={state.activeNotification.salaryFranchiseDays}
 						/>
 					</label>
 					<label>
@@ -121,17 +119,17 @@
 							type="number"
 							min="0"
 							step="1"
-							bind:value={state.activePeriod.congeFranchiseDays}
+							bind:value={state.activeNotification.congeFranchiseDays}
 						/>
 					</label>
 					<label class="wide">
 						<span>Notes période</span>
-						<textarea rows="2" bind:value={state.activePeriod.notes}></textarea>
+						<textarea rows="2" bind:value={state.activeNotification.notes}></textarea>
 					</label>
-					{#if state.activePeriod.sourceStoredName}
+					{#if state.activeNotification.sourceStoredName}
 						<a
 							class="wide ghost-button"
-							href={`${base}/api/periods/${state.activePeriod.id}/document`}
+							href={`${base}/api/periods/${state.activeNotification.id}/document`}
 							target="_blank"
 							rel="noreferrer"
 						>
@@ -141,7 +139,7 @@
 					<button
 						class="wide danger"
 						type="button"
-						onclick={() => state.activePeriod && state.removePeriod(state.activePeriod.id)}
+						onclick={() => state.activeNotification && state.removePeriod(state.activeNotification.id)}
 					>
 						Supprimer cette notification ARE
 					</button>
@@ -150,7 +148,7 @@
 		</div>
 
 		<div class="formula-box">
-			<span>{state.activePeriod ? `Synthèse ${state.activePeriod.label}` : 'Synthèse globale'}</span
+			<span>{state.activeNotification ? `Synthèse ${state.activeNotification.label}` : 'Synthèse globale'}</span
 			>
 			<strong>
 				{formatNumber(state.periodStats.hours, 0)} h · {formatCurrency(
@@ -247,7 +245,7 @@
 		<div class="formula-box">
 			<span>Projection</span>
 			<strong>{formatPreciseCurrency(state.dailyAllowance)} / jour</strong>
-			{#if allowanceDetail && !state.activePeriod?.dailyAllowance}
+			{#if allowanceDetail && !state.activeNotification?.dailyAllowance}
 				<small>
 					A {formatPreciseCurrency(allowanceDetail.a)} + B {formatPreciseCurrency(allowanceDetail.b)} + C
 					{formatPreciseCurrency(allowanceDetail.c)}
@@ -257,7 +255,7 @@
 						· plafond {formatPreciseCurrency(allowanceDetail.cap)}
 					{/if}
 				</small>
-			{:else if state.activePeriod?.dailyAllowance}
+			{:else if state.activeNotification?.dailyAllowance}
 				<small>Montant de la notification ARE</small>
 			{/if}
 			<small>
