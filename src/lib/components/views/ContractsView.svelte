@@ -347,6 +347,15 @@
 						bind:value={appState.selectedContract.contributions}
 					/>
 				</label>
+				<label onchange={() => markManual('employerCost')}>
+					<span>Coût employeur</span>
+					<input
+						type="number"
+						min="0"
+						step="0.01"
+						bind:value={appState.selectedContract.employerCost}
+					/>
+				</label>
 				<label>
 					<span>Taux net</span>
 					<input
