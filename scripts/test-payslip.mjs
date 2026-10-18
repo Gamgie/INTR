@@ -156,6 +156,11 @@ try {
 	]);
 	assert.deepEqual([split.annex8, split.annex10, split.majority, split.lastAnnex], [100, 60, 'Annexe 8', 'Annexe 10']);
 
+	// Un net corrigé à la main n'est plus remplacé par la lecture du bulletin.
+	const locked = m.consolidateContract({ ...contract, netSalary: 440, manualFields: ['netSalary'] }, documents).fields;
+	assert.equal(locked.netSalary, undefined);
+	assert.equal(locked.hours, 48);
+
 	console.log('Payslip figures tests passed.');
 } finally {
 	await server.close();

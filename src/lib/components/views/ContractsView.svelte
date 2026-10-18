@@ -108,6 +108,13 @@
 		}
 		contract.updatedAt = new Date().toISOString();
 	}
+
+	// Une saisie à la main protège le champ du recalcul automatique depuis les documents.
+	function markManual(field: string) {
+		const contract = appState.selectedContract;
+		if (!contract) return;
+		contract.manualFields = [...new Set([...(contract.manualFields ?? []), field])];
+	}
 </script>
 
 <section class="view-grid contract-layout">
@@ -276,15 +283,15 @@
 						{/each}
 					</select>
 				</label>
-				<label>
+				<label onchange={() => markManual('startDate')}>
 					<span>Début</span>
 					<DateInput bind:value={appState.selectedContract.startDate} />
 				</label>
-				<label>
+				<label onchange={() => markManual('endDate')}>
 					<span>Fin</span>
 					<DateInput bind:value={appState.selectedContract.endDate} />
 				</label>
-				<label>
+				<label onchange={() => markManual('hours')}>
 					<span>Heures</span>
 					<input
 						type="number"
@@ -294,15 +301,15 @@
 						onchange={() => appState.updateRates(appState.selectedContract!)}
 					/>
 				</label>
-				<label>
+				<label onchange={() => markManual('cachets')}>
 					<span>Cachets</span>
 					<input type="number" min="0" step="1" bind:value={appState.selectedContract.cachets} />
 				</label>
-				<label>
+				<label onchange={() => markManual('employmentStatus')}>
 					<span>Statut metier</span>
 					<input bind:value={appState.selectedContract.employmentStatus} />
 				</label>
-				<label>
+				<label onchange={() => markManual('netSalary')}>
 					<span>Net</span>
 					<input
 						type="number"
@@ -321,7 +328,7 @@
 						bind:value={appState.selectedContract.taxableNetSalary}
 					/>
 				</label>
-				<label>
+				<label onchange={() => markManual('grossSalary')}>
 					<span>Brut</span>
 					<input
 						type="number"

@@ -199,6 +199,9 @@ function normalizeContract(contract: Partial<Contract>): Contract {
 						: 'Estimation',
 		notes: cleanString(contract.notes),
 		documentIds: Array.isArray(contract.documentIds) ? contract.documentIds.map(String) : [],
+		manualFields: Array.isArray(contract.manualFields)
+			? [...new Set(contract.manualFields.map(String))]
+			: [],
 		createdAt,
 		updatedAt
 	};

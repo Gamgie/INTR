@@ -79,6 +79,8 @@ export type ContractFields = {
 export type Contract = ContractFields & {
 	id: string;
 	documentIds: string[];
+	/** Champs corrigés à la main : le recalcul depuis les documents ne les touche plus. */
+	manualFields?: string[];
 	createdAt: string;
 	updatedAt: string;
 };

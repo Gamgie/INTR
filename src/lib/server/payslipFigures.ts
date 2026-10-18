@@ -258,6 +258,14 @@ export function consolidateContract(contract: Contract, documents: ContractDocum
 	const hours = fields.hours ?? contract.hours;
 	if (net && hours) fields.netHourlyRate = Number((net / hours).toFixed(2));
 
+	// Une valeur corrigée à la main l'emporte sur la lecture des documents (scan mal lu…).
+	const manual = new Set(contract.manualFields ?? []);
+	for (const key of Object.keys(fields) as (keyof ContractFields)[]) {
+		if (manual.has(key)) delete fields[key];
+	}
+	if (manual.has('hours') || manual.has('netSalary')) delete fields.netHourlyRate;
+	if (manual.has('hours') || manual.has('grossSalary')) delete fields.grossHourlyRate;
+
 	// Ne garder que ce qui change.
 	for (const key of Object.keys(fields) as (keyof ContractFields)[]) {
 		if (contract[key] === fields[key]) delete fields[key];
