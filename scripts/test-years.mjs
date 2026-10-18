@@ -78,6 +78,24 @@ try {
 	assert.equal(reference.contractCount, 2, `seulement 2026 (${reference.contractCount})`);
 	Date.now = realNow;
 
+	// Historique : argent reçu (net + ARE + Congés Spectacles), par mois écoulé, évolution du brut.
+	const history = await server.ssrLoadModule('/src/lib/history.ts');
+	assert.equal(history.elapsedMonths('2024-12-01', '2025-11-30', today), 12);
+	assert.equal(history.elapsedMonths('2025-11-16', '2026-11-15', today), 11.1);
+	const money = { ...statsData, contracts: [], monthlyInfos: [] };
+	money.settings = { ...money.settings, anniversaries: { 2025: '2025-11-15', 2026: '2026-11-15' }, congesSpectaclesByYear: { 2025: 600 } };
+	money.contracts = [
+		{ ...contract('2025-03-01'), grossSalary: 1000, netSalary: 800, employerCost: 1500 },
+		{ ...contract('2024-03-01'), grossSalary: 800, netSalary: 640 }
+	];
+	money.monthlyInfos = [{ month: '2025-04', periodId: '', congeSpectacle: 0, realIndemnity: 1000, dailyIndemnity: 0, notes: '' }];
+	const y25 = history.buildYearHistory(money, today).find((entry) => entry.year.year === 2025);
+	assert.equal(y25.totalIncome, 2400);
+	assert.equal(y25.monthlyIncome, 200);
+	assert.equal(y25.employerCost, 1500);
+	assert.equal(y25.grossPerHour, 100);
+	assert.equal(Math.round(y25.grossChange * 100), 25, '+25 % sur 2024');
+
 	console.log('Intermittence years tests passed.');
 } finally {
 	await server.close();
