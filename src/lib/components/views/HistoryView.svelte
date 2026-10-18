@@ -221,7 +221,9 @@
 			<p class="readout">
 				<strong>{grossFocus.year.year}{grossFocus.year.isCurrent ? ' (en cours)' : ''}</strong>
 				<span>Brut {formatCurrency(grossFocus.grossSalary)}</span>
-				<span>{change(grossFocus.grossChange)} sur un an</span>
+				{#if grossFocus.grossChange !== undefined}
+					<span>{change(grossFocus.grossChange)} sur un an</span>
+				{/if}
 				<span>{formatPreciseCurrency(grossFocus.grossPerHour)} par heure</span>
 				<span>Coût employeur {formatCurrency(grossFocus.employerCost)}</span>
 			</p>
