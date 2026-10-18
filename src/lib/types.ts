@@ -152,6 +152,8 @@ export type AppSettings = {
 	remoteSyncEnabled: boolean;
 	remoteLastSyncAt: string;
 	remoteLastSyncStatus: string;
+	/** kDrive folder (URL or id) holding the original documents to import. */
+	kdriveSourceFolder: string;
 };
 
 export type AppData = {
@@ -164,7 +166,20 @@ export type AppData = {
 	periods: IntermittencePeriod[];
 	futureContracts: FutureContract[];
 	monthlyInfos: MonthlyInfo[];
+	kdriveImports: KdriveImport[];
 	settings: AppSettings;
+};
+
+/** A source file read from kDrive by « Importer depuis kDrive » (the original is never modified). */
+export type KdriveImport = {
+	fileId: number;
+	path: string;
+	size: number;
+	importedAt: string;
+	status: 'importé' | 'erreur';
+	message: string;
+	documentIds: string[];
+	periodIds: string[];
 };
 
 export type MonthlyStats = {

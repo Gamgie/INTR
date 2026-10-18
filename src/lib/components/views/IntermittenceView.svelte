@@ -3,6 +3,7 @@
 
 	import type { IntermittensState } from '$lib/app/state.svelte';
 	import DateInput from '$lib/components/DateInput.svelte';
+	import KdriveImport from '$lib/components/KdriveImport.svelte';
 	import { formatCurrency, formatNumber, formatPreciseCurrency } from '$lib/format';
 	import { ANNEXES, RULES } from '$lib/rules';
 	import { estimateDailyAllowanceDetail } from '$lib/stats';
@@ -265,6 +266,8 @@
 				{state.reference.contractCount} contrats
 			</small>
 		</div>
+
+		<KdriveImport {state} />
 
 		<div class="sync-card">
 			<div class="panel-heading">

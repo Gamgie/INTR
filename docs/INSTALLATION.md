@@ -21,9 +21,10 @@ les réglages de Vercel. Le dépôt `Gamgie/INTR` est public : aucun document pe
 1. Dans kDrive (web), dans ton kDrive **pro**, crée le dossier `InterMittens`, par exemple dans
    `Finance/Pole Emploi/Intermittence/`.
 2. Ouvre-le. L'adresse du navigateur ressemble à :
-   `https://ksuite.infomaniak.com/…/drive/123456/files/7890`
-   - `123456` est l'**identifiant du kDrive** (`KDRIVE_DRIVE_ID`)
-   - `7890` est l'**identifiant du dossier** (`KDRIVE_FOLDER_ID`)
+   `https://ksuite.infomaniak.com/2216131/kdrive/app/drive/3830432/files/7890`
+   - `3830432` est l'**identifiant du kDrive** (`KDRIVE_DRIVE_ID`) : c'est celui de ton kDrive pro
+   - le dernier nombre (`7890` ici) est l'**identifiant du dossier** (`KDRIVE_FOLDER_ID`)
+   - `2216131` est l'identifiant de l'organisation kSuite, l'app n'en a pas besoin
 
 ## 2. Le jeton kDrive
 
@@ -45,7 +46,7 @@ Ce jeton donne accès à tout le kDrive : s'il fuit, supprime-le dans la même p
 |---|---|---|
 | `ACCESS_PASSWORD` | un mot de passe long, rien que pour l'app | Secret |
 | `KDRIVE_TOKEN` | le jeton de l'étape 2 | Secret |
-| `KDRIVE_DRIVE_ID` | `123456` | Config |
+| `KDRIVE_DRIVE_ID` | `3830432` | Config |
 | `KDRIVE_FOLDER_ID` | `7890` | Config |
 
 4. **Deploy**. Ensuite, chaque envoi sur la branche `main` met le site à jour tout seul.
@@ -67,6 +68,22 @@ Comme pour Ogma, les DNS de gamgie.com sont chez Wix.
 2. **Partager > Sur l'écran d'accueil**.
 3. Ouvrir l'app depuis l'icône et se reconnecter une fois : l'app installée a sa propre session,
    valable 180 jours.
+
+## 6. Importer tes documents
+
+Dans l'app, onglet **Intermittence**, panneau **Import depuis kDrive** :
+
+1. Colle l'adresse kDrive du dossier `Finance/Pole Emploi/Intermittence` (copiée depuis le
+   navigateur), puis **Lire le dossier**. L'app liste ses sous-dossiers : `2022`, `2023`, `2024`,
+   `2026`, `GUSO`, `Audiens - Congé Spectacle`… `Archive` et `Ressource` sont décochés par défaut.
+2. Coche ce que tu veux, puis **Importer**. Chaque fichier passe par la même analyse que le bouton
+   « Importer » (classement, découpage des PDF multi-bulletins, OCR des scans, rattachement aux
+   contrats). Garde la page ouverte : l'import se fait fichier par fichier, avec une barre de
+   progression. Sur iPhone, mieux vaut le faire depuis l'ordinateur la première fois.
+3. Relancer reprend seulement les fichiers pas encore importés. Les originaux ne sont jamais
+   modifiés.
+
+Les fichiers Excel (comme `Déclaration.xlsx`) ne sont pas analysés par l'app.
 
 ## Développement local
 

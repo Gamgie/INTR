@@ -33,6 +33,11 @@ export function startFakeKdrive({ port = 0, driveId = '42', token = 'test-token'
 			const more = start + pageSize < all.length;
 			return send(res, 200, { result: 'success', data: page.map(meta), has_more: more, cursor: more ? String(start + pageSize) : null });
 		}
+		if (req.method === 'GET' && (m = url.pathname.match(`^/3/drive/${driveId}/files/(\\d+)$`))) {
+			const n = nodes.get(Number(m[1]));
+			if (!n) return send(res, 404, { result: 'error', error: { code: 'object_not_found' } });
+			return send(res, 200, { result: 'success', data: meta(n) });
+		}
 		if (req.method === 'POST' && (m = url.pathname.match(`^/3/drive/${driveId}/files/(\\d+)/directory$`))) {
 			const { name } = JSON.parse(body.toString());
 			const n = { id: nextId++, name, type: 'dir', parent_id: Number(m[1]) };
@@ -80,9 +85,23 @@ export function startFakeKdrive({ port = 0, driveId = '42', token = 'test-token'
 		send(res, 404, { result: 'error', error: { code: 'route_not_found', path: url.pathname } });
 	});
 
+	const addDir = (parentId, name) => {
+		const n = { id: nextId++, name, type: 'dir', parent_id: parentId };
+		nodes.set(n.id, n);
+		return n;
+	};
+	const addFile = (parentId, name, data) => {
+		const n = { id: nextId++, name, type: 'file', parent_id: parentId, data: Buffer.from(data) };
+		nodes.set(n.id, n);
+		return n;
+	};
+	const move = (id, parentId) => {
+		nodes.get(id).parent_id = parentId;
+	};
+
 	return new Promise((resolve) =>
 		server.listen(port, '127.0.0.1', () =>
-			resolve({ server, port: server.address().port, driveId, token, appFolderId: appFolder.id, nodes, trash, stats, children })
+			resolve({ server, port: server.address().port, driveId, token, appFolderId: appFolder.id, nodes, trash, stats, children, addDir, addFile, move })
 		)
 	);
 }

@@ -7,6 +7,7 @@ import type {
 	FutureContract,
 	FutureContractAmountType,
 	IntermittencePeriod,
+	KdriveImport,
 	MonthlyInfo,
 	Project
 } from '$lib/types';
@@ -75,6 +76,7 @@ export function createDefaultData(): AppData {
 		periods: [],
 		futureContracts: [],
 		monthlyInfos: [],
+		kdriveImports: [],
 		settings: {
 			referenceStartDate: `${new Date().getFullYear()}-01-01`,
 			targetHours: 507,
@@ -98,7 +100,8 @@ export function createDefaultData(): AppData {
 			remoteBaseUrl: 'https://yoursite.fr/intermittens',
 			remoteSyncEnabled: false,
 			remoteLastSyncAt: '',
-			remoteLastSyncStatus: 'Synchronisation distante non activée'
+			remoteLastSyncStatus: 'Synchronisation distante non activée',
+			kdriveSourceFolder: ''
 		}
 	};
 }
@@ -257,6 +260,19 @@ function normalizeMonthlyInfo(info: Partial<MonthlyInfo>): MonthlyInfo {
 	};
 }
 
+function normalizeKdriveImport(item: Partial<KdriveImport>): KdriveImport {
+	return {
+		fileId: normalizeNumber(item.fileId),
+		path: cleanString(item.path),
+		size: normalizeNumber(item.size),
+		importedAt: cleanString(item.importedAt),
+		status: item.status === 'erreur' ? 'erreur' : 'importé',
+		message: cleanString(item.message),
+		documentIds: Array.isArray(item.documentIds) ? item.documentIds.map(String) : [],
+		periodIds: Array.isArray(item.periodIds) ? item.periodIds.map(String) : []
+	};
+}
+
 export function normalizeData(input: Partial<AppData>): AppData {
 	const defaults = createDefaultData();
 	const settings = { ...defaults.settings, ...(input.settings ?? {}) };
@@ -275,9 +291,13 @@ export function normalizeData(input: Partial<AppData>): AppData {
 		monthlyInfos: Array.isArray(input.monthlyInfos)
 			? input.monthlyInfos.map(normalizeMonthlyInfo).filter((info) => info.month)
 			: [],
+		kdriveImports: Array.isArray(input.kdriveImports)
+			? input.kdriveImports.map(normalizeKdriveImport).filter((item) => item.fileId > 0)
+			: [],
 		settings: {
 			...settings,
 			annex: normalizeAnnex(settings.annex),
+			kdriveSourceFolder: cleanString(settings.kdriveSourceFolder),
 			targetHours: normalizeNumber(settings.targetHours) || defaults.settings.targetHours,
 			minDailyAllowance:
 				normalizeNumber(settings.minDailyAllowance) || defaults.settings.minDailyAllowance,

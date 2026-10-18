@@ -51,8 +51,10 @@ const call = (route, init = {}) =>
 		})
 	);
 
-async function scannedContractPdf(title, padBytes = 0, month = 3) {
+async function scannedContractPdf(title, padBytes = 0, month = 3, startDay = 3) {
 	const mm = String(month).padStart(2, '0');
+	const d1 = String(startDay).padStart(2, '0');
+	const d2 = String(startDay + 4).padStart(2, '0');
 	const canvas = createCanvas(1400, 1800);
 	const context = canvas.getContext('2d');
 	context.fillStyle = '#fff';
@@ -61,7 +63,7 @@ async function scannedContractPdf(title, padBytes = 0, month = 3) {
 	context.font = 'bold 42px Arial';
 	context.fillText("CONTRAT D'ENGAGEMENT A DUREE DETERMINEE DIT D'USAGE", 80, 120);
 	context.font = '30px Arial';
-	[`Employeur : ${title}`, 'Emploi : Regisseur video', `Du 03/${mm}/2026 au 07/${mm}/2026`, 'Nombre d heures : 40', 'Salaire brut : 800,00 EUR'].forEach(
+	[`Employeur : ${title}`, 'Emploi : Regisseur video', `Du ${d1}/${mm}/2026 au ${d2}/${mm}/2026`, 'Nombre d heures : 40', 'Salaire brut : 800,00 EUR'].forEach(
 		(line, index) => context.fillText(line, 80, 240 + index * 70)
 	);
 	const pdf = await PDFDocument.create();
@@ -168,6 +170,63 @@ try {
 		kdrive.children(kdrive.appFolderId).filter((node) => node.name === 'intermittens.json').length,
 		1,
 		'une seule base, pas de doublon'
+	);
+
+	// --- Import from a kDrive source folder shaped like Clément's « Intermittence » ---
+	const source = kdrive.addDir(1, 'Intermittence');
+	const y2025 = kdrive.addDir(source.id, '2025');
+	const archive = kdrive.addDir(source.id, 'Archive');
+	kdrive.addFile(y2025.id, 'contrat-octobre.pdf', await scannedContractPdf('Compagnie Source', 0, 10, 20));
+	kdrive.addFile(y2025.id, 'contrat-novembre.pdf', await scannedContractPdf('Compagnie Source', 0, 11, 20));
+	kdrive.addFile(archive.id, 'vieux.pdf', await scannedContractPdf('Compagnie Archive', 0, 12));
+	kdrive.addFile(source.id, 'Déclaration.xlsx', 'pas un pdf');
+	// The app's own folder stored inside the source must never be re-imported.
+	kdrive.move(kdrive.appFolderId, source.id);
+
+	const sourceUrl = `https://ksuite.infomaniak.com/2216131/kdrive/app/drive/${kdrive.driveId}/files/${source.id}`;
+	const scanResponse = await call(`/api/kdrive/source?folder=${encodeURIComponent(sourceUrl)}`);
+	const scanned = await scanResponse.json();
+	assert.equal(scanResponse.status, 200, `lecture du dossier source: ${scanned.message}`);
+	assert.equal(scanned.folder.name, 'Intermittence');
+	assert.deepEqual(
+		scanned.files.map((file) => [file.path, file.importable]),
+		[
+			['2025/contrat-novembre.pdf', true],
+			['2025/contrat-octobre.pdf', true],
+			['Archive/vieux.pdf', true],
+			['Déclaration.xlsx', false]
+		],
+		'arborescence lue, dossier de l’app ignoré'
+	);
+
+	const before = (await (await call('/api/data')).json()).contracts.length;
+	for (const file of scanned.files.filter((item) => item.group === '2025')) {
+		const response = await call('/api/kdrive/import', {
+			method: 'POST',
+			body: JSON.stringify({ fileId: file.id, path: file.path }),
+			headers: { 'content-type': 'application/json' }
+		});
+		const payload = await response.json();
+		assert.equal(response.status, 200, `import kDrive ${file.path}: ${payload.record?.message}`);
+		assert.equal(payload.record.status, 'importé');
+		assert.equal(payload.data.kdriveImports.find((item) => item.fileId === file.id)?.status, 'importé');
+	}
+	const after = await (await call('/api/data')).json();
+	assert.equal(after.contracts.length, before + 2, 'deux contrats créés depuis kDrive');
+	assert.ok(
+		after.contracts.some((contract) => contract.startDate === '2026-10-20' && contract.hours === 40),
+		'contrat d’octobre analysé'
+	);
+
+	const rescan = await (await call(`/api/kdrive/source?folder=${source.id}`)).json();
+	assert.deepEqual(
+		rescan.files.filter((file) => file.status === 'importé').map((file) => file.path),
+		['2025/contrat-novembre.pdf', '2025/contrat-octobre.pdf'],
+		'statut d’import conservé pour la relance'
+	);
+	assert.ok(
+		kdrive.nodes.get(scanned.files[0].id).data.length > 0 && !kdrive.trash.some((node) => node.parent_id === y2025.id),
+		'originaux intacts'
 	);
 
 	console.log(

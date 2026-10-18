@@ -223,6 +223,13 @@ const kdriveBackend: PersistenceBackend = {
 	}
 };
 
+/** kDrive client and the app's own folder, for reading original documents elsewhere in the drive. */
+export function kdriveAccess() {
+	if (!kdriveConfigured()) return null;
+	const state = kdrive();
+	return { client: state.client, appFolderId: Number(state.folderId) };
+}
+
 export function kdriveConfigured() {
 	return Boolean(
 		env.KDRIVE_TOKEN?.trim() && env.KDRIVE_DRIVE_ID?.trim() && env.KDRIVE_FOLDER_ID?.trim()
