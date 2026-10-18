@@ -179,6 +179,19 @@
 					<span>{groupLabel(group.name)}</span>
 					<small>{group.pending} à importer / {group.total}</small>
 				</label>
+				<details class="kdrive-files">
+					<summary>Voir les {group.total} fichier{group.total > 1 ? 's' : ''}</summary>
+					<ul>
+						{#each files.filter((file) => file.importable && file.group === group.name) as file (file.id)}
+							<li>
+								<span>{file.path}</span>
+								<small class:ko={file.status === 'erreur'}>
+									{file.status || 'à importer'}
+								</small>
+							</li>
+						{/each}
+					</ul>
+				</details>
 			{/each}
 		</div>
 	{/if}
@@ -236,6 +249,41 @@
 
 	.kdrive-group span {
 		overflow-wrap: anywhere;
+	}
+
+	.kdrive-files {
+		margin: -2px 0 4px 26px;
+	}
+
+	.kdrive-files summary {
+		cursor: pointer;
+		color: rgba(237, 241, 238, 0.68);
+		font-size: 12px;
+	}
+
+	.kdrive-files ul {
+		display: grid;
+		gap: 2px;
+		margin: 6px 0 0;
+		padding: 0;
+		list-style: none;
+		max-height: 260px;
+		overflow-y: auto;
+	}
+
+	.kdrive-files li {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) auto;
+		gap: 8px;
+		font-size: 12px;
+	}
+
+	.kdrive-files li span {
+		overflow-wrap: anywhere;
+	}
+
+	.kdrive-files .ko {
+		color: #f39a86;
 	}
 
 	.kdrive-errors {

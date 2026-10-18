@@ -229,6 +229,19 @@ try {
 		'originaux intacts'
 	);
 
+	// --- Deep tree and pagination (fake kDrive pages by 10) ---
+	const deep = kdrive.addDir(1, 'Profond');
+	const level1 = kdrive.addDir(deep.id, '2024');
+	const level2 = kdrive.addDir(level1.id, 'Bulletins');
+	const level3 = kdrive.addDir(level2.id, 'Mars');
+	for (let index = 0; index < 23; index += 1) kdrive.addFile(level2.id, `bulletin-${index}.pdf`, 'x');
+	for (let index = 0; index < 12; index += 1) kdrive.addFile(level3.id, `cachet-${index}.PDF`, 'x');
+	kdrive.addFile(level1.id, 'aem.pdf', 'x');
+	const deepScan = await (await call(`/api/kdrive/source?folder=${deep.id}`)).json();
+	assert.equal(deepScan.files.length, 36, `arborescence profonde lue en entier (${deepScan.files.length})`);
+	assert.ok(deepScan.files.some((file) => file.path === '2024/Bulletins/Mars/cachet-11.PDF' && file.importable));
+	assert.ok(deepScan.files.every((file) => file.group === '2024'));
+
 	// --- Diagnostic and readable errors ---
 	const diagnostic = await call('/diagnostic');
 	const diagnosticHtml = await diagnostic.text();
