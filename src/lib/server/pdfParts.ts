@@ -237,3 +237,87 @@ export async function splitAndClassifyDocument(
 		];
 	}
 }
+
+export type DocumentBundle = { fileName: string; buffer: Buffer; pageStart: number; pageEnd: number };
+
+type Period = { start: string; end: string };
+
+function isoFromParts(day: string, month: string, year: string) {
+	const fullYear = year.length === 2 ? `20${year}` : year;
+	return `${fullYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+}
+
+// Période d'une page : « du 01/11/24 au 02/11/24 » (bulletin GHS), « 01/10/2021 au 02/10/2021 »
+// (Lit Up), « 29 10 2024 02 11 2024 » (AEM GHS, certificat Audiens).
+export function pagePeriod(text: string): Period | undefined {
+	const slashed = text.match(/\b(\d{2})\/(\d{2})\/(\d{2}|\d{4}) au (\d{2})\/(\d{2})\/(\d{2}|\d{4})\b/);
+	const spaced = text.match(/\b(\d{2}) (\d{2}) (\d{4}) (\d{2}) (\d{2}) (\d{4})\b/);
+	const match = slashed ?? spaced;
+	if (!match) return undefined;
+	const start = isoFromParts(match[1], match[2], match[3]);
+	const end = isoFromParts(match[4], match[5], match[6]);
+	return start <= end ? { start, end } : undefined;
+}
+
+const overlap = (a: Period, b: Period) =>
+	Math.max(0, Math.min(Date.parse(a.end), Date.parse(b.end)) - Math.max(Date.parse(a.start), Date.parse(b.start)) + 86_400_000);
+
+// Un PDF qui regroupe plusieurs paies (Zeendoc : tous les bulletins du mois, puis toutes les AEM,
+// puis tous les certificats) est découpé en lots, un par bulletin : le bulletin, et l'AEM et le
+// certificat dont la période le recouvre. Chaque lot est ensuite importé comme un fichier, et
+// rattaché à son propre contrat.
+export async function splitIntoBundles(fileName: string, buffer: Buffer): Promise<DocumentBundle[]> {
+	const whole = [{ fileName, buffer, pageStart: 1, pageEnd: 1 }];
+	if (!fileName.toLowerCase().endsWith('.pdf')) return whole;
+
+	try {
+		const source = await PDFDocument.load(buffer, { ignoreEncryption: true });
+		const pageCount = source.getPageCount();
+		whole[0].pageEnd = pageCount;
+		if (pageCount < 2) return whole;
+
+		const { pages } = await extractPdfDocumentText(buffer);
+		const info = pages.map((text, index) => ({
+			index,
+			kind: classifyDocumentKind(text, 'Autre'),
+			period: pagePeriod(text)
+		}));
+		const anchors: Period[] = [];
+		for (const page of info) {
+			if (page.kind !== 'Fiche de paie' || !page.period) continue;
+			if (!anchors.some((anchor) => anchor.start === page.period!.start && anchor.end === page.period!.end)) {
+				anchors.push(page.period);
+			}
+		}
+		if (anchors.length < 2) return whole;
+
+		const groups = anchors.map(() => [] as number[]);
+		let previous = 0;
+		for (const page of info) {
+			let target = previous;
+			if (page.period) {
+				const scores = anchors.map((anchor) => overlap(anchor, page.period!));
+				const best = Math.max(...scores);
+				if (best > 0) target = scores.indexOf(best);
+			}
+			groups[target].push(page.index);
+			previous = target;
+		}
+
+		const dot = fileName.lastIndexOf('.');
+		const base = dot > 0 ? fileName.slice(0, dot) : fileName;
+		const bundles: DocumentBundle[] = [];
+		for (const [index, indexes] of groups.entries()) {
+			if (!indexes.length) continue;
+			bundles.push({
+				fileName: `${base} (${anchors[index].start}).pdf`,
+				buffer: await createPdfFromPages(source, indexes),
+				pageStart: indexes[0] + 1,
+				pageEnd: indexes.at(-1)! + 1
+			});
+		}
+		return bundles.length > 1 ? bundles : whole;
+	} catch {
+		return whole;
+	}
+}

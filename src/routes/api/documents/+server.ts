@@ -22,6 +22,7 @@ import {
 	rangesOverlap
 } from '$lib/server/contractMatching';
 import { documentKindFromFileName, splitAndClassifyDocument } from '$lib/server/pdfParts';
+import { consolidateContract } from '$lib/server/payslipFigures';
 import {
 	isRemoteSyncEnabled,
 	isSameDeployment,
@@ -697,6 +698,17 @@ async function importDocument({ request, url }: Parameters<RequestHandler>[0]) {
 					(id) => !acceptedDocuments.some((document) => document.id === id)
 				)
 			];
+		}
+
+		// Heures, cachets, brut, net et dates recalculés sur l'ensemble des documents du contrat,
+		// bulletin d'abord : le premier document importé ne fige plus les chiffres.
+		if (contract && acceptedDocuments.length) {
+			const consolidated = consolidateContract(contract, current.documents);
+			if (Object.keys(consolidated.fields).length) {
+				Object.assign(contract, consolidated.fields);
+				mergeAppliedFields(appliedFields, consolidated.fields);
+				contract.updatedAt = new Date().toISOString();
+			}
 		}
 
 		if (preparedPeriods.length) {

@@ -4,7 +4,12 @@
 	import DocumentPresence from '$lib/components/DocumentPresence.svelte';
 	import { formatCurrency, formatDate, formatNumber } from '$lib/format';
 	import ImportFeedback from '$lib/components/ImportFeedback.svelte';
-	import { buildMonthlyContractBreakdown, contractRecognizedHours, monthLabel } from '$lib/stats';
+	import {
+		buildMonthlyContractBreakdown,
+		cachetHoursMultiplier,
+		contractRecognizedHours,
+		monthLabel
+	} from '$lib/stats';
 	import type { Contract } from '$lib/types';
 
 	let { state: appState }: { state: IntrState } = $props();
@@ -18,11 +23,13 @@
 		buildMonthlyContractBreakdown(appState.appData, appState.selectedMonth)
 			.map((detail) => {
 				const period = declarationPeriod(detail.contract, appState.selectedMonth);
-				const hasCachets = detail.cachets > 0;
+				// Les heures du contrat comprennent les cachets (12 h chacun) : on déclare à part
+				// les cachets et les heures restantes (journées, services).
+				const cachetHours = detail.cachets * cachetHoursMultiplier(detail.contract);
 
 				return {
 					...detail,
-					declaredHours: hasCachets ? 0 : detail.hours,
+					declaredHours: Math.max(0, Number((detail.hours - cachetHours).toFixed(2))),
 					declaredCachets: detail.cachets,
 					periodStart: period.start,
 					periodEnd: period.end

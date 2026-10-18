@@ -2,6 +2,7 @@ import { error, json, type RequestHandler } from '@sveltejs/kit';
 
 import { downloadSourceFile } from '$lib/server/kdriveImport';
 import { kdriveConfigured } from '$lib/server/persistence';
+import { splitIntoBundles } from '$lib/server/pdfParts';
 import { mutateData } from '$lib/server/storage';
 import type { KdriveImport } from '$lib/types';
 
@@ -38,20 +39,34 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 				? 'image/png'
 				: 'image/jpeg';
 
-		// Same pipeline as the « Importer » button (classification, splitting, OCR, routing).
-		const body = new FormData();
-		body.set('autoRoute', 'true');
-		body.set('kind', 'Autre');
-		body.set('file', new File([new Uint8Array(source.bytes)], source.name, { type }));
-		const response = await fetch('/api/documents', { method: 'POST', body });
-		payload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+		// Un PDF qui regroupe plusieurs paies est importé lot par lot (un bulletin avec son AEM et
+		// son certificat), chaque lot passant par la même analyse que le bouton « Importer »
+		// (classement, OCR, rattachement à son contrat).
+		const bundles =
+			type === 'application/pdf'
+				? await splitIntoBundles(source.name, Buffer.from(source.bytes))
+				: [{ fileName: source.name, buffer: Buffer.from(source.bytes) }];
+		const errors: string[] = [];
+		for (const bundle of bundles) {
+			const body = new FormData();
+			body.set('autoRoute', 'true');
+			body.set('kind', 'Autre');
+			body.set('file', new File([new Uint8Array(bundle.buffer)], bundle.fileName, { type }));
+			const response = await fetch('/api/documents', { method: 'POST', body });
+			payload = (await response.json().catch(() => ({}))) as Record<string, unknown>;
 
-		if (!response.ok) {
+			if (!response.ok) {
+				errors.push(String(payload.message ?? `Erreur ${response.status}`));
+				continue;
+			}
+			if (Array.isArray(payload.documentIds)) record.documentIds.push(...payload.documentIds.map(String));
+			if (Array.isArray(payload.periodIds)) record.periodIds.push(...payload.periodIds.map(String));
+		}
+		if (errors.length) {
 			record.status = 'erreur';
-			record.message = String(payload.message ?? `Erreur ${response.status}`);
-		} else {
-			record.documentIds = Array.isArray(payload.documentIds) ? payload.documentIds.map(String) : [];
-			record.periodIds = Array.isArray(payload.periodIds) ? payload.periodIds.map(String) : [];
+			record.message = errors.join(' ; ');
+		} else if (bundles.length > 1) {
+			record.message = `PDF découpé en ${bundles.length} paies, chacune rattachée à son contrat.`;
 		}
 	} catch (cause) {
 		record.status = 'erreur';
