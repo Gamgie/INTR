@@ -162,6 +162,13 @@ try {
 	assert.equal(locked.netSalary, undefined);
 	assert.equal(locked.hours, 48);
 
+	// Bulletin Movinmotion : total versé lu dans le récapitulatif.
+	const mvm = m.readFigures(
+		'BULLETIN DE SALAIRE Brut Base S.S. Plafond S.S. Net imposable Ch. patronales Total versé Allègements Du 01/12/2022 au 02/12/2022 Net payé 333.66 422.00 422.00 221.16 221.16 221.16 221.16 345.80 1 639.18 230.28 230.28 652.28 652.28 32.92 95.49 Net payé : 333.66 euros',
+		'Fiche de paie'
+	);
+	assert.deepEqual([mvm.netSalary, mvm.grossSalary, mvm.employerCost], [333.66, 422, 652.28]);
+
 	console.log('Payslip figures tests passed.');
 } finally {
 	await server.close();

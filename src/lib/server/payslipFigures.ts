@@ -60,7 +60,11 @@ function readGhsPayslip(text: string): Figures {
 		first(text, new RegExp(String.raw`Net payé ${money} ?€`, 'i')) ??
 		first(text, new RegExp(String.raw`NET A PAYER AVANT IMPOT SUR LE REVENU ${money}`, 'i')) ??
 		figures.netSocial;
-	figures.employerCost = first(text, new RegExp(String.raw`Total versé par l'?\s?employeur\s*${money} ?€`, 'i'));
+	// Tolère l'OCR des scans (« Totai versé | par l'employeur | 731,73 € »).
+	figures.employerCost = first(
+		text,
+		new RegExp(String.raw`Tota[il1] vers[ée] par l'?\s?employeur[^\d]{0,20}?${money} ?€`, 'i')
+	);
 	// Défraiements repas, gardés pour information : « 2 Défraiement repas 20,7 20,70 41,40 ».
 	let allowances = 0;
 	for (const match of text.matchAll(/(?:^|[^\d,])(\d{1,2}) (?:Défraiements?|Indem\.?|Indemnités?) repas\b[^\d]{0,20}(\d{1,3},\d{1,2})/gi)) {
@@ -166,13 +170,24 @@ function readLitUpPayslip(text: string): Figures | undefined {
 	return figures;
 }
 
+// Bulletins Movinmotion : récapitulatif « Brut, Base S.S., Plafond S.S., Net imposable,
+// Ch. patronales, Total versé, Allègements », chaque fois mois puis année, après « Net payé ».
+function readMovinmotionPayslip(text: string): Figures | undefined {
+	if (!/Ch\. patronales Total versé/i.test(text)) return undefined;
+	const row = text.match(/Net payé (\d[\d .]*\.\d{2}(?: \d[\d ]*\.\d{2}){12,})/i)?.[1];
+	if (!row) return undefined;
+	const values = [...row.matchAll(/\d{1,3}(?: \d{3})*\.\d{2}/g)].map((value) => Number(value[0].replace(/ /g, '')));
+	if (values.length < 13) return undefined;
+	return { format: 'bulletin Movinmotion', netSalary: values[0], grossSalary: values[1], employerCost: values[11] };
+}
+
 export function readFigures(raw: string, kind: DocumentKind): Figures | undefined {
 	if (!raw) return undefined;
 	// Police décalée (« %XOOHWLQ » pour « Bulletin ») : on remet le texte d'aplomb.
 	const text = raw.includes('\u0003') && !/\b(?:du|de|le|la)\b/i.test(raw.slice(0, 400)) ? unshift(raw) : raw;
 	if (kind === 'Fiche de paie') {
 		if (isGhsPayslip(text)) return readGhsPayslip(text);
-		return readLitUpPayslip(text);
+		return readMovinmotionPayslip(text) ?? readLitUpPayslip(text);
 	}
 	if (kind === 'AEM') return readGhsAem(text);
 	return undefined;
