@@ -11,6 +11,7 @@ import type {
 	Project
 } from '$lib/types';
 
+import { normalizeAnnex } from '$lib/rules';
 import { persistence } from '$lib/server/persistence';
 
 export { dataDir, documentDir } from '$lib/server/persistence';
@@ -78,14 +79,14 @@ export function createDefaultData(): AppData {
 			referenceStartDate: `${new Date().getFullYear()}-01-01`,
 			targetHours: 507,
 			annex: 'Annexe 8',
-			minDailyAllowance: 31.97,
-			smicHourlyGross: 11.88,
+			minDailyAllowance: 31.96,
+			smicHourlyGross: 12.31,
 			annex8SalaryCoefficient: 0.42,
 			annex8HoursCoefficient: 0.26,
 			annex8FixedCoefficient: 0.4,
 			monthlyWorkDayDivisor: 8,
 			monthlyShiftCoefficient: 1.4,
-			pmss: 3925,
+			pmss: 4005,
 			cumulPmssMultiplier: 1.18,
 			transatEmail: '',
 			ghsApiBaseUrl: '',
@@ -276,6 +277,7 @@ export function normalizeData(input: Partial<AppData>): AppData {
 			: [],
 		settings: {
 			...settings,
+			annex: normalizeAnnex(settings.annex),
 			targetHours: normalizeNumber(settings.targetHours) || defaults.settings.targetHours,
 			minDailyAllowance:
 				normalizeNumber(settings.minDailyAllowance) || defaults.settings.minDailyAllowance,

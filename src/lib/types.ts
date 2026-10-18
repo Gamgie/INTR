@@ -131,7 +131,7 @@ export type IntermittencePeriod = {
 export type AppSettings = {
 	referenceStartDate: string;
 	targetHours: number;
-	annex: 'Annexe 8';
+	annex: 'Annexe 8' | 'Annexe 10';
 	minDailyAllowance: number;
 	smicHourlyGross: number;
 	annex8SalaryCoefficient: number;

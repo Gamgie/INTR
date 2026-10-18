@@ -4,14 +4,21 @@
 	import type { IntermittensState } from '$lib/app/state.svelte';
 	import DateInput from '$lib/components/DateInput.svelte';
 	import { formatCurrency, formatNumber, formatPreciseCurrency } from '$lib/format';
+	import { ANNEXES, RULES } from '$lib/rules';
+	import { estimateDailyAllowanceDetail } from '$lib/stats';
 
 	let { state }: { state: IntermittensState } = $props();
+	let allowanceDetail = $derived(
+		state.reference.hours && state.reference.grossSalary
+			? estimateDailyAllowanceDetail(state.appData)
+			: null
+	);
 </script>
 
 <section class="view-grid two-columns">
 	<section class="panel">
 		<div class="panel-heading">
-			<h3>Paramètres Annexe 8</h3>
+			<h3>Paramètres {state.appData.settings.annex}</h3>
 		</div>
 		<div class="search-box">
 			<div class="panel-heading">
@@ -214,49 +221,12 @@
 				/>
 			</label>
 			<label>
-				<span>Coeff salaire</span>
-				<input
-					type="number"
-					min="0"
-					step="0.01"
-					bind:value={state.appData.settings.annex8SalaryCoefficient}
-				/>
-			</label>
-			<label>
-				<span>Coeff heures</span>
-				<input
-					type="number"
-					min="0"
-					step="0.01"
-					bind:value={state.appData.settings.annex8HoursCoefficient}
-				/>
-			</label>
-			<label>
-				<span>Coeff fixe</span>
-				<input
-					type="number"
-					min="0"
-					step="0.01"
-					bind:value={state.appData.settings.annex8FixedCoefficient}
-				/>
-			</label>
-			<label>
-				<span>Diviseur jours</span>
-				<input
-					type="number"
-					min="1"
-					step="1"
-					bind:value={state.appData.settings.monthlyWorkDayDivisor}
-				/>
-			</label>
-			<label>
-				<span>Coeff décalage</span>
-				<input
-					type="number"
-					min="0"
-					step="0.01"
-					bind:value={state.appData.settings.monthlyShiftCoefficient}
-				/>
+				<span>Annexe</span>
+				<select bind:value={state.appData.settings.annex}>
+					{#each ANNEXES as annex (annex)}
+						<option value={annex}>{RULES[annex].label}</option>
+					{/each}
+				</select>
 			</label>
 			<label>
 				<span>PMSS</span>
@@ -276,6 +246,19 @@
 		<div class="formula-box">
 			<span>Projection</span>
 			<strong>{formatPreciseCurrency(state.dailyAllowance)} / jour</strong>
+			{#if allowanceDetail && !state.activePeriod?.dailyAllowance}
+				<small>
+					A {formatPreciseCurrency(allowanceDetail.a)} + B {formatPreciseCurrency(allowanceDetail.b)} + C
+					{formatPreciseCurrency(allowanceDetail.c)}
+					{#if allowanceDetail.limitedBy === 'plancher'}
+						· plancher {formatPreciseCurrency(allowanceDetail.floor)}
+					{:else if allowanceDetail.limitedBy === 'plafond'}
+						· plafond {formatPreciseCurrency(allowanceDetail.cap)}
+					{/if}
+				</small>
+			{:else if state.activePeriod?.dailyAllowance}
+				<small>Montant de la notification ARE</small>
+			{/if}
 			<small>
 				{formatNumber(state.reference.hours, 0)} h · {formatCurrency(state.reference.grossSalary)} brut
 				·

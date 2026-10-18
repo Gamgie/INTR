@@ -1,3 +1,4 @@
+import { dailyAllowance, monthlyPayment, normalizeAnnex } from '$lib/rules';
 import type {
 	AppData,
 	Contract,
@@ -203,23 +204,27 @@ export function calculateReference(data: AppData) {
 	};
 }
 
+export function estimateDailyAllowanceDetail(data: AppData) {
+	const reference = calculateReference(data);
+	const settings = data.settings;
+
+	return dailyAllowance({
+		annex: normalizeAnnex(settings.annex),
+		referenceSalary: reference.grossSalary,
+		hours: reference.hours,
+		minDailyAllowance: settings.minDailyAllowance,
+		pmss: settings.pmss
+	});
+}
+
 export function estimateDailyAllowance(data: AppData) {
 	const activePeriod = getActivePeriod(data);
 	if (activePeriod?.dailyAllowance) return activePeriod?.dailyAllowance;
 
 	const reference = calculateReference(data);
-	const settings = data.settings;
+	if (!reference.hours || !reference.grossSalary) return 0;
 
-	if (!reference.hours || !reference.grossSalary || !settings.smicHourlyGross) return 0;
-
-	const salaryPart =
-		settings.annex8SalaryCoefficient *
-		(reference.grossSalary / (reference.hours * settings.smicHourlyGross));
-	const hoursPart = settings.annex8HoursCoefficient * (reference.hours / settings.targetHours);
-	const gross =
-		settings.minDailyAllowance * (salaryPart + hoursPart + settings.annex8FixedCoefficient);
-
-	return round(Math.max(0, gross));
+	return round(estimateDailyAllowanceDetail(data).value);
 }
 
 export function estimateMonthlyIndemnity(
@@ -231,22 +236,20 @@ export function estimateMonthlyIndemnity(
 	const info = getMonthlyInfo(data, month);
 	const dailyAllowance =
 		info.dailyIndemnity > 0 ? info.dailyIndemnity : estimateDailyAllowance(data);
-	const workedDaysEstimate =
-		data.settings.monthlyWorkDayDivisor > 0
-			? Math.ceil(
-					(hours / data.settings.monthlyWorkDayDivisor) * data.settings.monthlyShiftCoefficient
-				)
-			: 0;
-	const indemnizableDays = Math.max(0, daysInMonth(month) - workedDaysEstimate);
-	const rawIndemnity = indemnizableDays * dailyAllowance;
-	const monthlyCap = data.settings.pmss * data.settings.cumulPmssMultiplier;
-	const cappedIndemnity =
-		monthlyCap > 0 ? Math.min(rawIndemnity, Math.max(0, monthlyCap - grossSalary)) : rawIndemnity;
+	const payment = monthlyPayment({
+		annex: normalizeAnnex(data.settings.annex),
+		daysInMonth: daysInMonth(month),
+		hours,
+		grossSalary,
+		dailyAllowance,
+		pmss: data.settings.pmss,
+		cumulPmssMultiplier: data.settings.cumulPmssMultiplier
+	});
 
 	return {
 		dailyAllowance,
-		workedDaysEstimate,
-		estimatedIndemnity: round(cappedIndemnity)
+		workedDaysEstimate: payment.nonIndemnifiableDays,
+		estimatedIndemnity: payment.amount
 	};
 }
 
