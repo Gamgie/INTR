@@ -21,9 +21,11 @@ les réglages de Vercel. Le dépôt `Gamgie/INTR` est public : aucun document pe
 1. Dans kDrive (web), dans ton kDrive **pro**, crée le dossier `INTR`, par exemple dans
    `Finance/Pole Emploi/Intermittence/`.
 2. Ouvre-le. L'adresse du navigateur ressemble à :
-   `https://ksuite.infomaniak.com/2216131/kdrive/app/drive/3830432/files/7890`
+   `https://ksuite.infomaniak.com/2216131/kdrive/app/drive/3830432/files/NOMBRE`
    - `3830432` est l'**identifiant du kDrive** (`KDRIVE_DRIVE_ID`) : c'est celui de ton kDrive pro
-   - le dernier nombre (`7890` ici) est l'**identifiant du dossier** (`KDRIVE_FOLDER_ID`)
+   - le nombre à la place de `NOMBRE` (le dernier de l'adresse, propre à ton dossier `INTR`) est
+     l'**identifiant du dossier** (`KDRIVE_FOLDER_ID`). Ne recopie pas un nombre d'exemple : ouvre
+     vraiment le dossier `INTR` dans kDrive et lis l'adresse.
    - `2216131` est l'identifiant de l'organisation kSuite, l'app n'en a pas besoin
 
 ## 2. Le jeton kDrive
@@ -47,7 +49,7 @@ Ce jeton donne accès à tout le kDrive : s'il fuit, supprime-le dans la même p
 | `ACCESS_PASSWORD` | un mot de passe long, rien que pour l'app | Secret |
 | `KDRIVE_TOKEN` | le jeton de l'étape 2 | Secret |
 | `KDRIVE_DRIVE_ID` | `3830432` | Config |
-| `KDRIVE_FOLDER_ID` | `7890` | Config |
+| `KDRIVE_FOLDER_ID` | le dernier nombre de l'adresse du dossier `INTR` | Config |
 
 4. **Deploy**. Ensuite, chaque envoi sur la branche `main` met le site à jour tout seul.
 5. **Settings > Functions** : vérifier que **Fluid Compute** est activé (les imports avec OCR

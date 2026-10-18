@@ -30,6 +30,9 @@ export const load = async (): Promise<{ steps: Step[] }> => {
 	if (folderId && !numeric.test(folderId)) {
 		steps.push({ label: 'Format', ok: false, detail: 'KDRIVE_FOLDER_ID doit être un nombre seul (le dernier nombre de l’adresse du dossier).' });
 	}
+	if (folderId === '7890') {
+		steps.push({ label: 'Format', ok: false, detail: 'KDRIVE_FOLDER_ID vaut 7890, le nombre d’exemple du guide : remplace-le par le dernier nombre de l’adresse de ton dossier INTR dans kDrive.' });
+	}
 	if (/\s/.test(token)) {
 		steps.push({ label: 'Format', ok: false, detail: 'KDRIVE_TOKEN contient un espace ou un retour à la ligne : recolle-le sans rien autour.' });
 	}
