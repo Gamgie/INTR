@@ -105,7 +105,8 @@ export function createDefaultData(): AppData {
 			remoteLastSyncStatus: 'Synchronisation distante non activée',
 			kdriveSourceFolder: '',
 			anniversaries: { '2026': '2026-11-15' },
-			ownerFirstName: 'Clément'
+			ownerFirstName: 'Clément',
+			employerNames: {}
 		}
 	};
 }
@@ -277,6 +278,15 @@ function repairMinDailyAllowance(value: unknown, periods: unknown) {
 	return current;
 }
 
+function normalizeEmployerNames(value: unknown): Record<string, string> {
+	if (!value || typeof value !== 'object') return {};
+	return Object.fromEntries(
+		Object.entries(value as Record<string, unknown>)
+			.filter(([siren, name]) => /^\d{9}$/.test(siren) && typeof name === 'string' && name.trim())
+			.map(([siren, name]) => [siren, String(name).trim().slice(0, 80)])
+	);
+}
+
 function normalizeAnniversaries(value: unknown): Record<string, string> {
 	if (!value || typeof value !== 'object') return {};
 	return Object.fromEntries(
@@ -344,6 +354,7 @@ export function normalizeData(input: Partial<AppData>): AppData {
 			kdriveSourceFolder: cleanString(settings.kdriveSourceFolder),
 			anniversaries: normalizeAnniversaries(settings.anniversaries),
 			ownerFirstName: cleanString(settings.ownerFirstName) || 'Clément',
+			employerNames: normalizeEmployerNames(settings.employerNames),
 			targetHours: normalizeNumber(settings.targetHours) || defaults.settings.targetHours,
 			minDailyAllowance: repairMinDailyAllowance(settings.minDailyAllowance, input.periods),
 			smicHourlyGross:

@@ -154,8 +154,10 @@ export type AppSettings = {
 	remoteLastSyncStatus: string;
 	/** Dates anniversaire saisies à la main, par année d'intermittence ({ "2026": "2026-11-15" }). */
 	anniversaries: Record<string, string>;
-	/** Prénom utilisé dans les noms de fichiers rangés. */
+	/** Prénom (ancien modèle de noms de fichiers). */
 	ownerFirstName: string;
+	/** Noms d'employeurs corrigés à la main, par SIREN (« 213502388 » → « Ville de Rennes - Opéra »). */
+	employerNames: Record<string, string>;
 	/** kDrive folder (URL or id) holding the original documents to import. */
 	kdriveSourceFolder: string;
 };

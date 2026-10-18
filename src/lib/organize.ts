@@ -13,6 +13,17 @@
 // le nom ou le chemin du fichier. Un fichier sans date reconnue reste où il est.
 
 import type { AppData, DocumentKind } from '$lib/types';
+import {
+	buildEmployerDirectory,
+	employerName,
+	readEmployer,
+	readHeaderMonth,
+	readPeriodStart,
+	type EmployerDirectory,
+	type EmployerReading
+} from '$lib/employer';
+
+type EmployerSource = EmployerReading['format'];
 import { currentIntermittenceYear, yearOfDate } from '$lib/years';
 
 export const ARCHIVE_FOLDER = 'Archive';
@@ -39,6 +50,8 @@ export type OrganizeMove = {
 	toPath: string;
 	date: string;
 	employer: string;
+	/** Comment l'employeur a été vérifié dans le document. */
+	employerSource: EmployerSource;
 	type: string;
 	/** D'où vient la date : analyse de l'import ou nom du fichier. */
 	basis: 'analyse' | 'nom du fichier';
@@ -46,11 +59,23 @@ export type OrganizeMove = {
 
 export type OrganizeSkip = { fileId: number; path: string; reason: string };
 
+export type OrganizeEmployer = {
+	siren: string;
+	/** Nom utilisé pour les dossiers et les fichiers. */
+	name: string;
+	/** Nom tel que lu dans les documents, avant correction. */
+	readName: string;
+	files: number;
+	corrected: boolean;
+};
+
 export type OrganizePlan = {
 	moves: OrganizeMove[];
 	unchanged: number;
 	skipped: OrganizeSkip[];
 	currentYear: number;
+	/** Employeurs trouvés, pour corriger un nom une fois pour tous ses fichiers. */
+	employers: OrganizeEmployer[];
 };
 
 /** Code en tête du nom de fichier : « [BP] 2026-07-26 Compagnie Gamgie.pdf ». */
@@ -65,18 +90,6 @@ const TYPE_LABELS: Record<DocumentKind, string> = {
 };
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
-
-/** Code lisible dans un nom non analysé : [AEM], [CTT], [CT], [BP], [CS], « Bulletin de paie »… */
-function typeFromName(name: string) {
-	const lower = name.toLowerCase();
-	if (/\[aem\]|\baem\b/.test(lower)) return 'AEM';
-	if (/\[ctt?\]|contrat/.test(lower)) return 'CT';
-	if (/\[bp\]|bulletin|paie/.test(lower)) return 'BP';
-	if (/\[cs\]|cong[eé]s? spectacle/.test(lower)) return 'CS';
-	if (/\[are\]|notification/.test(lower)) return 'ARE';
-	if (/guso/.test(lower)) return 'GUSO';
-	return 'DOC';
-}
 
 /** Retire les caractères interdits dans un nom kDrive et les espaces superflus. */
 export function cleanName(value: string) {
@@ -141,24 +154,6 @@ export function dateFromText(text: string) {
 	return parseTextDate(text)?.date ?? '';
 }
 
-/** Employeur déduit du chemin quand l'analyse n'en donne pas (…/AAAA/MM/Employeur/fichier). */
-function employerFromPath(path: string) {
-	const parts = path.split('/');
-	const index = parts.findIndex((part, position) => /^\d{2}$/.test(part) && /^20\d{2}$/.test(parts[position - 1] ?? ''));
-	const candidate = index >= 0 ? parts[index + 1] : '';
-	return candidate && candidate !== parts.at(-1) ? candidate : '';
-}
-
-function normalizeWords(value: string) {
-	return value
-		.normalize('NFD')
-		.replace(/\p{Diacritic}/gu, '')
-		.toLowerCase()
-		.replace(/[^a-z0-9]+/g, ' ')
-		.split(' ')
-		.filter((word) => word.length >= 4 && !['compagnie', 'production', 'productions', 'association', 'theatre', 'societe'].includes(word));
-}
-
 /** Employeur lisible dans un nom de fichier : Zeendoc, « [AEM] 2024-11-09 Baron Production », … */
 export function employerFromName(name: string) {
 	const stem = name.replace(/\.[a-z0-9]{2,5}$/i, '');
@@ -169,92 +164,116 @@ export function employerFromName(name: string) {
 	return '';
 }
 
-function employerFromText(text: string) {
-	const match = /employeur\s*:?\s*([^\n]{2,60})/i.exec(text);
-	return match ? match[1].replace(/\s+(siret|urssaf|adresse).*$/i, '').trim() : '';
-}
-
-/** Ramène un nom approximatif à une structure connue (« GAMGIE (COMPAGNIE) » → « Compagnie Gamgie »). */
-function canonicalEmployer(data: AppData, candidate: string) {
-	const words = normalizeWords(candidate);
-	if (!words.length) return '';
-	const squashed = candidate.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/[^a-z0-9]/g, '');
-	for (const company of data.companies) {
-		const companyWords = normalizeWords(`${company.name} ${company.legalName}`);
-		if (companyWords.some((word) => words.includes(word) || squashed.includes(word))) return company.name;
-	}
-	return '';
-}
-
-/**
- * Premier candidat qui correspond à une structure connue ; sinon une structure connue citée dans
- * le nom du fichier ; sinon le premier candidat tel quel.
- */
-function chooseEmployer(data: AppData, candidates: string[], fileName = '') {
-	const present = candidates.map((value) => value.trim()).filter(Boolean);
-	for (const candidate of present) {
-		const known = canonicalEmployer(data, candidate);
-		if (known) return known;
-	}
-	return canonicalEmployer(data, fileName.replace(/\.[a-z0-9]{2,5}$/i, '')) || present[0] || '';
-}
-
 type Classification = {
 	date: string;
 	employer: string;
+	employerSource: EmployerSource;
+	siren?: string;
 	type: string;
 	basis: OrganizeMove['basis'];
 	/** Faux quand seul le mois est connu (nom « 05.2022 », dossier « 2024/06 »). */
 	dayKnown?: boolean;
 };
 
-function classify(data: AppData, file: OrganizeSource): Classification | undefined {
-	const record = data.kdriveImports.find((item) => item.fileId === file.id && item.status === 'importé');
-	const companyName = (id: string) => data.companies.find((company) => company.id === id)?.name ?? '';
-	const candidates: Classification[] = [];
 
-	for (const documentId of record?.documentIds ?? []) {
+function baseName(found: Pick<Classification, 'type' | 'date' | 'dayKnown' | 'employer'>) {
+	const date = found.dayKnown === false ? found.date.slice(0, 7) : found.date;
+	return cleanName(`[${found.type}] ${date} ${cleanName(found.employer) || 'Sans employeur'}`);
+}
+
+const CODE_ORDER = ['CT', 'BP', 'AEM', 'CS', 'GUSO', 'ARE', 'DOC'];
+
+function classify(
+	data: AppData,
+	file: OrganizeSource,
+	directory: EmployerDirectory,
+	readings: Map<string, EmployerReading | undefined>
+): Classification | { skip: string } {
+	const record = data.kdriveImports.find((item) => item.fileId === file.id && item.status === 'importé');
+	if (!record) {
+		return { skip: 'pas encore importé : l’employeur doit être lu dans le document' };
+	}
+
+	const contractDates: string[] = [];
+	const linkedDates: string[] = [];
+	const periodDates: string[] = [];
+	const monthOnly = new Set<string>();
+	const codes = new Set<string>();
+	let employer = '';
+	let employerSource: EmployerSource = 'siret seul';
+	let siren = '';
+
+	for (const documentId of record.documentIds) {
 		const document = data.documents.find((item) => item.id === documentId);
 		if (!document) continue;
+		// Date du contrat (jamais celle de la paie), par ordre de confiance :
+		//   1. début de contrat lu dans l'AEM ou le contrat ;
+		//   2. contrat rattaché par l'import, si la période payée tombe bien dans ce contrat ;
+		//   3. période lue dans le bulletin ou le certificat de congés (rattachement manifestement faux).
+		const text = document.extractedTextPreview ?? '';
 		const contract = data.contracts.find((item) => item.id === document.contractId);
-		const date = [contract?.startDate, document.extractedFields?.startDate].find(
+		const read = readPeriodStart(text, document.kind);
+		const linkedStart = [contract?.startDate, document.extractedFields?.startDate].find(
 			(value): value is string => Boolean(value && ISO.test(value))
 		);
-		if (!date) continue;
-		candidates.push({
-			date,
-			employer: chooseEmployer(data, [
-				companyName(contract?.companyId ?? '') || companyName(document.extractedFields?.companyId ?? ''),
-				employerFromName(file.name),
-				employerFromText(document.extractedTextPreview ?? ''),
-				employerFromPath(file.path)
-			], file.name),
-			type: TYPE_LABELS[document.kind] ?? 'DOC',
-			basis: 'analyse'
-		});
+		const linkedEnd = contract?.endDate && ISO.test(contract.endDate) ? contract.endDate : linkedStart;
+		const headerMonth = readHeaderMonth(text);
+		if (read?.source === 'contrat') {
+			contractDates.push(read.date);
+		} else if (read && linkedStart && read.date >= linkedStart && read.date <= (linkedEnd ?? linkedStart)) {
+			linkedDates.push(linkedStart);
+		} else if (read) {
+			periodDates.push(read.date);
+		} else if (headerMonth && (!linkedStart || !linkedStart.startsWith(headerMonth))) {
+			// Le mois écrit sur le document contredit le contrat rattaché : on garde le mois du document.
+			periodDates.push(`${headerMonth}-01`);
+			monthOnly.add(`${headerMonth}-01`);
+		} else if (linkedStart) {
+			linkedDates.push(linkedStart);
+		}
+		codes.add(TYPE_LABELS[document.kind] ?? 'DOC');
+		// Un PDF qui regroupe bulletin, AEM et congés : le premier employeur lisible vaut pour tous.
+		const reading = readings.get(document.id);
+		const name = employerName(reading, directory);
+		if (name && !employer) {
+			employer = name;
+			employerSource = reading!.format;
+			siren = reading!.siren;
+		}
 	}
 
-	for (const periodId of record?.periodIds ?? []) {
-		const period = data.periods.find((item) => item.id === periodId);
-		const date = [period?.admissionDate, period?.indemnizationStartDate, period?.anniversaryDate].find(
-			(value): value is string => Boolean(value && ISO.test(value))
-		);
-		if (date) candidates.push({ date, employer: 'France Travail', type: 'ARE', basis: 'analyse' });
+	// Une notification ARE ne compte que si le fichier ne contient rien d'autre (l'import prend
+	// parfois une page de contrat pour une notification).
+	if (!codes.size) {
+		for (const periodId of record.periodIds) {
+			const period = data.periods.find((item) => item.id === periodId);
+			const date = [period?.admissionDate, period?.indemnizationStartDate, period?.anniversaryDate].find(
+				(value): value is string => Boolean(value && ISO.test(value))
+			);
+			if (date) contractDates.push(date);
+			codes.add('ARE');
+			if (!employer) {
+				employer = 'France Travail';
+				employerSource = 'contrat';
+			}
+		}
 	}
 
-	if (candidates.length) {
-		// Un PDF découpé en plusieurs documents : on garde le premier dans le temps.
-		return [...candidates].sort((a, b) => a.date.localeCompare(b.date))[0];
-	}
+	const dates = [contractDates, linkedDates, periodDates].find((group) => group.length) ?? [];
+	if (!dates.length) return { skip: 'aucune date de contrat trouvée' };
+	if (!employer) return { skip: 'employeur introuvable dans le texte du document : à vérifier' };
 
-	const found = parseTextDate(file.name) ?? parseTextDate(file.path);
-	if (!found) return undefined;
+	const ordered = CODE_ORDER.filter((code) => codes.has(code));
+	const date = [...dates].sort()[0];
 	return {
-		date: found.date,
-		dayKnown: found.dayKnown,
-		employer: chooseEmployer(data, [employerFromName(file.name), employerFromPath(file.path)], file.name),
-		type: typeFromName(file.name),
-		basis: 'nom du fichier'
+		date,
+		dayKnown: !monthOnly.has(date),
+		employer,
+		employerSource,
+		siren,
+		// Un PDF qui regroupe plusieurs documents porte tous leurs codes : « [BP+AEM+CS] ».
+		type: (ordered.length > 1 ? ordered.filter((code) => code !== 'DOC') : ordered).join('+') || 'DOC',
+		basis: 'analyse'
 	};
 }
 
@@ -269,6 +288,19 @@ export function buildOrganizePlan(
 	const taken = new Set<string>();
 	let unchanged = 0;
 
+	// Lecture de l'employeur dans chaque document, puis un nom par SIREN pour tous les documents.
+	const readings = new Map(
+		data.documents.map((document) => [document.id, readEmployer(document.extractedTextPreview ?? '')])
+	);
+	const directory = buildEmployerDirectory(
+		[...readings.values()].filter((reading): reading is EmployerReading => Boolean(reading)),
+		data.settings.employerNames ?? {},
+		data.companies
+	);
+	const rawDirectory = buildEmployerDirectory(
+		[...readings.values()].filter((reading): reading is EmployerReading => Boolean(reading))
+	);
+
 	const sorted = [...files].sort((a, b) => a.path.localeCompare(b.path, 'fr', { numeric: true }));
 	const planned: Array<{ file: OrganizeSource; found: Classification; toDirs: string[]; base: string; ext: string }> = [];
 
@@ -281,9 +313,9 @@ export function buildOrganizePlan(
 			skipped.push({ fileId: file.id, path: file.path, reason: 'format non analysé' });
 			continue;
 		}
-		const found = classify(data, file);
-		if (!found) {
-			skipped.push({ fileId: file.id, path: file.path, reason: 'aucune date trouvée (importe-le d’abord)' });
+		const found = classify(data, file, directory, readings);
+		if ('skip' in found) {
+			skipped.push({ fileId: file.id, path: file.path, reason: found.skip });
 			continue;
 		}
 
@@ -295,7 +327,7 @@ export function buildOrganizePlan(
 			file,
 			found: { ...found, employer },
 			toDirs: [...(year < currentYear ? [ARCHIVE_FOLDER] : []), String(year), monthFolder, employer],
-			base: cleanName(`[${found.type}] ${found.dayKnown === false ? found.date.slice(0, 7) : found.date} ${employer}`),
+			base: baseName({ ...found, employer }),
 			ext: extension(file.name) || '.pdf'
 		});
 	}
@@ -337,10 +369,26 @@ export function buildOrganizePlan(
 			toPath,
 			date: item.found.date,
 			employer: item.found.employer,
+			employerSource: item.found.employerSource,
 			type: item.found.type,
 			basis: item.found.basis
 		});
 	}
 
-	return { moves, unchanged, skipped, currentYear };
+	const fileCount = new Map<string, number>();
+	for (const item of planned) {
+		if (item.found.siren) fileCount.set(item.found.siren, (fileCount.get(item.found.siren) ?? 0) + 1);
+	}
+	const employers: OrganizeEmployer[] = [...directory.bySiren.entries()]
+		.map(([siren, name]) => ({
+			siren,
+			name,
+			readName: rawDirectory.bySiren.get(siren) ?? name,
+			files: fileCount.get(siren) ?? 0,
+			corrected: Boolean(data.settings.employerNames?.[siren])
+		}))
+		.filter((employer) => employer.files > 0 || employer.corrected)
+		.sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+
+	return { moves, unchanged, skipped, currentYear, employers };
 }

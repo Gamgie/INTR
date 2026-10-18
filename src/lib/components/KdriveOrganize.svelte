@@ -2,7 +2,7 @@
 	import { base } from '$app/paths';
 
 	import type { IntrState } from '$lib/app/state.svelte';
-	import type { OrganizeMove, OrganizeSkip } from '$lib/organize';
+	import type { OrganizeEmployer, OrganizeMove, OrganizeSkip } from '$lib/organize';
 	import type { AppData } from '$lib/types';
 
 	let { state: app }: { state: IntrState } = $props();
@@ -13,7 +13,32 @@
 		unchanged: number;
 		skipped: OrganizeSkip[];
 		currentYear: number;
+		employers: OrganizeEmployer[];
 	};
+
+	const SOURCE_LABEL: Record<string, string> = {
+		bulletin: 'bulletin',
+		aem: 'AEM',
+		conges: 'certificat congés',
+		contrat: 'contrat',
+		'siret seul': 'SIRET'
+	};
+
+	let editedNames = $state<Record<string, string>>({});
+
+	async function saveEmployerNames() {
+		const next = { ...app.appData.settings.employerNames };
+		for (const employer of plan?.employers ?? []) {
+			const value = (editedNames[employer.siren] ?? employer.name).trim();
+			if (!value || value === employer.readName) delete next[employer.siren];
+			else next[employer.siren] = value;
+		}
+		app.appData.settings.employerNames = next;
+		app.touch();
+		await app.saveData();
+		editedNames = {};
+		await preparePlan();
+	}
 
 	let plan = $state<Plan | null>(null);
 	let busy = $state<'' | 'plan' | 'apply' | 'undo' | 'empty'>('');
@@ -27,7 +52,6 @@
 		const batchId = moves.at(-1)?.batchId;
 		return batchId ? moves.filter((move) => move.batchId === batchId) : [];
 	});
-	let fromName = $derived(plan?.moves.filter((move) => move.basis === 'nom du fichier').length ?? 0);
 	let byDestination = $derived.by(() => {
 		const groups = new Map<string, OrganizeMove[]>();
 		for (const move of plan?.moves ?? []) {
@@ -203,14 +227,41 @@
 		</div>
 	{/if}
 
+	{#if plan?.employers.length}
+		<details class="plan-group" open>
+			<summary>{plan.employers.length} employeurs lus dans les documents</summary>
+			<p class="muted">
+				Nom lu dans les documents (regroupés par SIREN). Corrige un nom ici : il vaudra pour tous
+				ses fichiers.
+			</p>
+			<ul class="employers">
+				{#each plan.employers as employer (employer.siren)}
+					<li>
+						<input
+							value={editedNames[employer.siren] ?? employer.name}
+							oninput={(event) => (editedNames[employer.siren] = event.currentTarget.value)}
+							aria-label={`Nom de l’employeur SIREN ${employer.siren}`}
+						/>
+						<small>
+							SIREN {employer.siren} · {employer.files} fichier{employer.files > 1 ? 's' : ''}
+							{#if employer.corrected}· lu « {employer.readName} »{/if}
+						</small>
+					</li>
+				{/each}
+			</ul>
+			{#if Object.keys(editedNames).length}
+				<button type="button" onclick={saveEmployerNames} disabled={busy !== ''}>
+					Enregistrer les noms et refaire l’aperçu
+				</button>
+			{/if}
+		</details>
+	{/if}
+
 	{#if plan?.moves.length}
 		<p class="muted">
 			Aperçu : {plan.moves.length} à ranger, {plan.unchanged} déjà en place,
 			{plan.skipped.length} laissés où ils sont. L’année en cours est {plan.currentYear}.
-			{#if fromName}
-				{fromName} fichier{fromName > 1 ? 's' : ''} sans analyse sont datés d’après leur nom (marqués
-				« nom »).
-			{/if}
+
 		</p>
 		{#each byDestination as [destination, moves] (destination)}
 			<details class="plan-group">
@@ -220,7 +271,7 @@
 						<li>
 							<span class="from">{move.fromPath}</span>
 							<span class="to">→ {move.toPath}</span>
-							{#if move.basis === 'nom du fichier'}<small class="warn">nom</small>{/if}
+							<small>employeur lu : {SOURCE_LABEL[move.employerSource] ?? move.employerSource}</small>
 						</li>
 					{/each}
 				</ul>
@@ -306,5 +357,23 @@
 
 	.warn {
 		color: #dfad4a;
+	}
+
+	.employers {
+		display: grid;
+		gap: 8px;
+		margin: 8px 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.employers li {
+		display: grid;
+		gap: 2px;
+	}
+
+	.employers input {
+		width: 100%;
+		min-width: 0;
 	}
 </style>

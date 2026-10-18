@@ -63,7 +63,7 @@ async function scannedContractPdf(title, padBytes = 0, month = 3, startDay = 3) 
 	context.font = 'bold 42px Arial';
 	context.fillText("CONTRAT D'ENGAGEMENT A DUREE DETERMINEE DIT D'USAGE", 80, 120);
 	context.font = '30px Arial';
-	[`Employeur : ${title}`, 'Emploi : Regisseur video', `Du ${d1}/${mm}/2026 au ${d2}/${mm}/2026`, 'Nombre d heures : 40', 'Salaire brut : 800,00 EUR'].forEach(
+	[`Entre les soussignés ${title}, Siret : 444 555 668 00011`, 'Emploi : Regisseur video', `Du ${d1}/${mm}/2026 au ${d2}/${mm}/2026`, 'Nombre d heures : 40', 'Salaire brut : 800,00 EUR'].forEach(
 		(line, index) => context.fillText(line, 80, 240 + index * 70)
 	);
 	const pdf = await PDFDocument.create();
@@ -240,7 +240,12 @@ try {
 		assert.equal(planResponse.status, 200, `plan: ${plan.message}`);
 		const targets = Object.fromEntries(plan.moves.map((move) => [move.fromPath, move.toPath]));
 		assert.ok(targets['2025/contrat-octobre.pdf'], 'contrat d’octobre à ranger');
-		assert.match(targets['Archive/[AEM] 2024-11-09 Baron Production.pdf'], /^Archive\/2024\/11\/Baron Production\/\[AEM\] 2024-11-09 Baron Production\.pdf$/);
+		assert.ok(!targets['Archive/[AEM] 2024-11-09 Baron Production.pdf'], 'non importé : laissé en place');
+		assert.match(
+			plan.skipped.find((skip) => skip.path === 'Archive/[AEM] 2024-11-09 Baron Production.pdf')?.reason ?? '',
+			/pas encore importé/
+		);
+		assert.match(targets['2025/contrat-octobre.pdf'], /\/Compagnie Source\/\[CT\] 2026-10-20 Compagnie Source\.pdf$/, 'employeur lu par OCR');
 		assert.ok(plan.skipped.some((skip) => skip.path === 'Déclaration.xlsx'), 'tableur laissé');
 
 		const before = plan.moves.map((move) => [move.fileId, intoTree(move.fileId)]);

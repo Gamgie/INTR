@@ -102,7 +102,12 @@ Toujours dans **Intermittence**, panneau **Ranger le dossier kDrive** (après l'
    - « Année » = année d'intermittence : du lendemain d'une date anniversaire à la suivante.
      Fin novembre et décembre de l'année civile précédente vont dans `MM (AAAA)`, par exemple
      `2026/12 (2025)/`, pour ne pas se mêler au même mois de l'année suivante.
-   - Restent en place : `Ressource`, les fichiers non PDF/image, ceux sans date reconnue.
+   - Employeur : toujours lu dans le texte du document (bulletin, AEM, certificat de congés,
+     contrat), jamais déduit du nom du dossier. Les documents d'un même SIREN prennent le même nom ;
+     un nom se corrige une fois dans le tableau « employeurs lus dans les documents ».
+   - Date : début du contrat (AEM, contrat, contrat rattaché), jamais la date de paie.
+   - Restent en place, listés « à vérifier » : `Ressource`, les fichiers non PDF/image, ceux pas
+     encore importés, ceux dont l'employeur ou la date ne se lit pas dans le document.
 2. **Ranger N fichiers** : fichier par fichier, avec une barre de progression.
 3. **Annuler le dernier rangement** remet chaque fichier à sa place et sous son ancien nom.
 4. **Dossiers vides à la corbeille** : les anciens dossiers vidés partent dans la corbeille kDrive

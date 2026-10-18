@@ -931,7 +931,7 @@ function analyzeGhsPayroll(text: string) {
 }
 
 function preview(text: string) {
-	return text.length > 1200 ? `${text.slice(0, 1200)}...` : text;
+	return text.length > 4000 ? `${text.slice(0, 4000)}...` : text;
 }
 
 export function analyzeDocumentText(text: string): DocumentAnalysis {
