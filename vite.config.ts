@@ -27,8 +27,8 @@ export default defineConfig({
 					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
 			},
 
-			// Set BASE_PATH=/intermittens on the hosted server.
-			// On Vercel (intermittent.gamgie.com), build serverless functions in Paris;
+			// Set BASE_PATH=/intr on the hosted server.
+			// On Vercel (intr.gamgie.com), build serverless functions in Paris;
 			// elsewhere keep the original Node server build.
 			adapter: process.env.VERCEL
 				? vercelAdapter({ runtime: 'nodejs22.x', regions: ['cdg1'], maxDuration: 300 })

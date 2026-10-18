@@ -1,6 +1,6 @@
 import type { AppData } from '$lib/types';
 
-const SYNC_HEADER = 'x-intermittens-sync';
+const SYNC_HEADER = 'x-intr-sync';
 
 export function isSyncRequest(request: Request) {
 	return request.headers.get(SYNC_HEADER) === '1';

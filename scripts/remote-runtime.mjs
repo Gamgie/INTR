@@ -168,7 +168,7 @@ function sshExec(config, command) {
 }
 
 async function writeProxy(config) {
-	const client = new SftpClient('intermittens-runtime');
+	const client = new SftpClient('intr-runtime');
 	await client.connect({
 		host: config.sftpConfig.host,
 		port: config.sftpConfig.port ?? 22,

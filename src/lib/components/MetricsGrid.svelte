@@ -1,8 +1,8 @@
 <script lang="ts">
-	import type { IntermittensState } from '$lib/app/state.svelte';
+	import type { IntrState } from '$lib/app/state.svelte';
 	import { formatCurrency, formatNumber, formatPreciseCurrency } from '$lib/format';
 
-	let { state }: { state: IntermittensState } = $props();
+	let { state }: { state: IntrState } = $props();
 </script>
 
 <section class="metrics-grid" aria-label="Indicateurs principaux">

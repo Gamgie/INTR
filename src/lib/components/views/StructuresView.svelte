@@ -1,11 +1,11 @@
 <script lang="ts">
-	import type { IntermittensState } from '$lib/app/state.svelte';
+	import type { IntrState } from '$lib/app/state.svelte';
 	import CompanyEditForm from '$lib/components/CompanyEditForm.svelte';
 	import CompanySummary from '$lib/components/CompanySummary.svelte';
 	import DateInput from '$lib/components/DateInput.svelte';
 	import { formatDate } from '$lib/format';
 
-	let { state }: { state: IntermittensState } = $props();
+	let { state }: { state: IntrState } = $props();
 
 	let selectedCompanyProjects = $derived(
 		state.selectedCompanyId

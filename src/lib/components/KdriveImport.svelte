@@ -3,7 +3,7 @@
 
 	import { base } from '$app/paths';
 
-	import type { IntermittensState } from '$lib/app/state.svelte';
+	import type { IntrState } from '$lib/app/state.svelte';
 	import type { AppData } from '$lib/types';
 
 	type SourceFile = {
@@ -17,7 +17,7 @@
 		message: string;
 	};
 
-	let { state: app }: { state: IntermittensState } = $props();
+	let { state: app }: { state: IntrState } = $props();
 
 	// Initial value only: the field is then edited locally.
 	let folderInput = $state(untrack(() => app.appData.settings.kdriveSourceFolder));

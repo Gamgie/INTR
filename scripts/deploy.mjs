@@ -482,7 +482,7 @@ async function uploadWithSftp(
 	const { default: SftpClient } = await import('ssh2-sftp-client');
 	const source = path.relative(root, configPath) || configPath;
 	const remoteRoot = trimTrailingSlash(String(requireConfigValue(config, 'remotePath', source)));
-	const client = new SftpClient('intermittens-deploy');
+	const client = new SftpClient('intr-deploy');
 
 	console.log(`Using local SFTP config from ${source}.`);
 

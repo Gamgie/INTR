@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { base } from '$app/paths';
 
-	import { documentKinds, type IntermittensState } from '$lib/app/state.svelte';
+	import { documentKinds, type IntrState } from '$lib/app/state.svelte';
 	import { formatNumber } from '$lib/format';
 	import type { Contract, DocumentKind } from '$lib/types';
 
-	let { contract, state }: { contract: Contract; state: IntermittensState } = $props();
+	let { contract, state }: { contract: Contract; state: IntrState } = $props();
 </script>
 
 <section class="documents">

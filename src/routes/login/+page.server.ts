@@ -50,11 +50,11 @@ function safeDestination(candidate: string | null) {
 	if (!candidate) return fallback;
 
 	try {
-		const destination = new URL(candidate, 'http://intermittens.local');
+		const destination = new URL(candidate, 'http://intr.local');
 		const requiredPrefix = base ? `${base}/` : '/';
 
 		if (
-			destination.origin !== 'http://intermittens.local' ||
+			destination.origin !== 'http://intr.local' ||
 			!destination.pathname.startsWith(requiredPrefix)
 		) {
 			return fallback;

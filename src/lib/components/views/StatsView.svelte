@@ -1,14 +1,14 @@
 <script lang="ts">
 	import { slide } from 'svelte/transition';
 
-	import type { IntermittensState } from '$lib/app/state.svelte';
+	import type { IntrState } from '$lib/app/state.svelte';
 	import DocumentPresence from '$lib/components/DocumentPresence.svelte';
 	import { requiredContractDocuments, summarizeContractDocuments } from '$lib/documentPresence';
 	import { formatCurrency, formatDate, formatNumber, formatPreciseCurrency } from '$lib/format';
 	import { buildMonthlyContractBreakdown, monthLabel } from '$lib/stats';
 	import type { MonthlyStats } from '$lib/types';
 
-	let { state: appState }: { state: IntermittensState } = $props();
+	let { state: appState }: { state: IntrState } = $props();
 	let openMonths = $state<string[]>([]);
 
 	let visibleMonthlyStats = $derived.by(() => {

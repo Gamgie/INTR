@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { createIntermittensState } from '$lib/app/state.svelte';
+	import { createIntrState } from '$lib/app/state.svelte';
 	import AppShell from '$lib/components/AppShell.svelte';
 	import MetricsGrid from '$lib/components/MetricsGrid.svelte';
 	import CalendarView from '$lib/components/views/CalendarView.svelte';
@@ -18,11 +18,11 @@
 		return pageData.appData;
 	}
 
-	const state = createIntermittensState(getInitialData());
+	const state = createIntrState(getInitialData());
 </script>
 
 <svelte:head>
-	<title>InterMittens</title>
+	<title>INTR</title>
 </svelte:head>
 
 <AppShell {state}>

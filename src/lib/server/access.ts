@@ -3,7 +3,7 @@ import { env } from '$env/dynamic/private';
 import { base } from '$app/paths';
 import type { Cookies } from '@sveltejs/kit';
 
-const ACCESS_COOKIE = 'intermittens_access';
+const ACCESS_COOKIE = 'intr_access';
 const COOKIE_VERSION = 'v1';
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 180;
 
@@ -20,7 +20,7 @@ function sessionToken() {
 	const passwordCredential = configuredPassword() || `unset:${Math.random()}`;
 
 	return `${COOKIE_VERSION}.${digest(
-		`intermittens:${COOKIE_VERSION}:${passwordCredential}`
+		`intr:${COOKIE_VERSION}:${passwordCredential}`
 	).toString('base64url')}`;
 }
 

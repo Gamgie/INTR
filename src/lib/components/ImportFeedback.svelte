@@ -1,7 +1,7 @@
 <script lang="ts">
-	import type { IntermittensState } from '$lib/app/state.svelte';
+	import type { IntrState } from '$lib/app/state.svelte';
 
-	let { state }: { state: IntermittensState } = $props();
+	let { state }: { state: IntrState } = $props();
 	let feedback = $derived(state.contractImportFeedback);
 	let isBusy = $derived(feedback?.phase === 'importing' || feedback?.phase === 'undoing');
 </script>

@@ -211,9 +211,9 @@ function createContract(companyId = '', projectId = '', project?: Project): Cont
 	};
 }
 
-export type IntermittensState = ReturnType<typeof createIntermittensState>;
+export type IntrState = ReturnType<typeof createIntrState>;
 
-export function createIntermittensState(initialData: AppData) {
+export function createIntrState(initialData: AppData) {
 	const initialSnapshot = structuredClone(initialData);
 	const initialMonth = currentMonthKey();
 

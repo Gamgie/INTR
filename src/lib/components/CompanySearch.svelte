@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { base } from '$app/paths';
 
-	import type { IntermittensState } from '$lib/app/state.svelte';
+	import type { IntrState } from '$lib/app/state.svelte';
 	import type { Company, CompanySearchResult } from '$lib/types';
 
-	let { company, state: app }: { company: Company; state: IntermittensState } = $props();
+	let { company, state: app }: { company: Company; state: IntrState } = $props();
 	let currentCompanyId = $state('');
 	let query = $state('');
 	let results = $state<CompanySearchResult[]>([]);

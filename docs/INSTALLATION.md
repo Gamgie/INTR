@@ -1,4 +1,4 @@
-# Mise en ligne sur intermittent.gamgie.com
+# Mise en ligne sur intr.gamgie.com
 
 Tout ce que Clément fait lui-même, étape par étape. Les valeurs secrètes (jeton kDrive, mot de passe)
 ne sont jamais écrites ici, ni dans le code, ni dans une conversation : elles vivent uniquement dans
@@ -9,16 +9,16 @@ les réglages de Vercel. Le dépôt `Gamgie/INTR` est public : aucun document pe
 
 - L'app tourne sur **Vercel** (région Paris), comme Ogma.
 - Ses données vivent dans **un dossier de ton kDrive** :
-  - `intermittens.json` : contrats, structures, périodes, réglages
+  - `intr.json` : contrats, structures, périodes, réglages
   - `documents/` : les PDF importés (bulletins, contrats, AEM, notifications ARE), découpés page par
     page quand un PDF contient plusieurs bulletins
-- Chaque sauvegarde remplace `intermittens.json` : kDrive garde les versions précédentes.
+- Chaque sauvegarde remplace `intr.json` : kDrive garde les versions précédentes.
   Une suppression dans l'app envoie le fichier dans la corbeille kDrive.
 - Tes dossiers d'origine (`Finance/Pole Emploi/Intermittence/2022`, …) ne sont jamais modifiés.
 
 ## 1. Le dossier de l'app dans kDrive
 
-1. Dans kDrive (web), dans ton kDrive **pro**, crée le dossier `InterMittens`, par exemple dans
+1. Dans kDrive (web), dans ton kDrive **pro**, crée le dossier `INTR`, par exemple dans
    `Finance/Pole Emploi/Intermittence/`.
 2. Ouvre-le. L'adresse du navigateur ressemble à :
    `https://ksuite.infomaniak.com/2216131/kdrive/app/drive/3830432/files/7890`
@@ -29,7 +29,7 @@ les réglages de Vercel. Le dépôt `Gamgie/INTR` est public : aucun document pe
 ## 2. Le jeton kDrive
 
 1. https://manager.infomaniak.com/v3/ng/accounts/token/list → **Créer un jeton**.
-2. Application : un nom parlant, `InterMittens`. Portée (scope) : **drive**. Durée : illimitée.
+2. Application : un nom parlant, `INTR`. Portée (scope) : **drive**. Durée : illimitée.
 3. Copie le jeton (affiché une seule fois) directement dans Vercel à l'étape 3. Ne le colle nulle
    part ailleurs.
 
@@ -53,18 +53,18 @@ Ce jeton donne accès à tout le kDrive : s'il fuit, supprime-le dans la même p
 5. **Settings > Functions** : vérifier que **Fluid Compute** est activé (les imports avec OCR
    peuvent durer jusqu'à 5 minutes).
 
-## 4. Adresse intermittent.gamgie.com (chez Wix)
+## 4. Adresse intr.gamgie.com (chez Wix)
 
 Comme pour Ogma, les DNS de gamgie.com sont chez Wix.
 
-1. Vercel, **Settings > Domains** : ajouter `intermittent.gamgie.com`.
+1. Vercel, **Settings > Domains** : ajouter `intr.gamgie.com`.
 2. Wix, **Domaines > gamgie.com > Gérer les enregistrements DNS > CNAME** : nom d'hôte
-   `intermittent`, valeur donnée par Vercel, **sans point final**, TTL 1 heure.
+   `intr`, valeur donnée par Vercel, **sans point final**, TTL 1 heure.
 3. Attendre que Vercel affiche le domaine en vert (quelques minutes à une heure).
 
 ## 5. Sur l'iPhone
 
-1. Ouvrir https://intermittent.gamgie.com dans **Safari**, se connecter avec `ACCESS_PASSWORD`.
+1. Ouvrir https://intr.gamgie.com dans **Safari**, se connecter avec `ACCESS_PASSWORD`.
 2. **Partager > Sur l'écran d'accueil**.
 3. Ouvrir l'app depuis l'icône et se reconnecter une fois : l'app installée a sa propre session,
    valable 180 jours.

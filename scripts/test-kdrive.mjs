@@ -24,7 +24,7 @@ if (!process.argv.includes('--skip-build')) {
 }
 
 // Copy the function out of the project so it cannot fall back on the project's node_modules.
-const workDir = await mkdtemp(path.join(tmpdir(), 'intermittens-kdrive-'));
+const workDir = await mkdtemp(path.join(tmpdir(), 'intr-kdrive-'));
 const functionDir = path.join(workDir, 'func');
 await cp('.vercel/output/functions/![-]/catchall.func', functionDir, {
 	recursive: true,
@@ -41,7 +41,7 @@ process.env.KDRIVE_API_BASE = `http://127.0.0.1:${kdrive.port}`;
 const handler = (
 	await import(pathToFileURL(path.join(functionDir, '.svelte-kit/vercel-tmp/index.js')).href)
 ).default;
-const origin = 'https://intermittent.gamgie.com';
+const origin = 'https://intr.gamgie.com';
 let cookie = '';
 const call = (route, init = {}) =>
 	handler.fetch(
@@ -125,7 +125,7 @@ try {
 	const initial = await (await call('/api/data')).json();
 	assert.equal(initial.version, 1);
 	const appFiles = kdrive.children(kdrive.appFolderId).map((node) => node.name);
-	assert.ok(appFiles.includes('intermittens.json'), 'base créée dans le dossier kDrive');
+	assert.ok(appFiles.includes('intr.json'), 'base créée dans le dossier kDrive');
 
 	const scan = await importFile('scan-contrat.pdf', await scannedContractPdf('Compagnie Scan'));
 	assert.match(scan.analysis.notes.join(' '), /OCR française appliquée/);
@@ -164,10 +164,10 @@ try {
 	assert.equal(deleteResponse.status, 200);
 	assert.ok(kdrive.trash.some((node) => node.name === toDelete.storedName), 'fichier mis à la corbeille');
 
-	const dataNode = kdrive.children(kdrive.appFolderId).find((node) => node.name === 'intermittens.json');
+	const dataNode = kdrive.children(kdrive.appFolderId).find((node) => node.name === 'intr.json');
 	assert.ok((dataNode.versions?.length ?? 0) > 5, 'versions successives de la base conservées');
 	assert.equal(
-		kdrive.children(kdrive.appFolderId).filter((node) => node.name === 'intermittens.json').length,
+		kdrive.children(kdrive.appFolderId).filter((node) => node.name === 'intr.json').length,
 		1,
 		'une seule base, pas de doublon'
 	);

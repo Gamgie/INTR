@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { IntermittensState } from '$lib/app/state.svelte';
+	import type { IntrState } from '$lib/app/state.svelte';
 	import { formatCurrency, formatDate, formatNumber } from '$lib/format';
 	import type { Company } from '$lib/types';
 
@@ -7,7 +7,7 @@
 		company,
 		state,
 		onedit
-	}: { company: Company; state: IntermittensState; onedit: () => void } = $props();
+	}: { company: Company; state: IntrState; onedit: () => void } = $props();
 
 	let projects = $derived(
 		state.appData.projects.filter((project) => project.companyId === company.id)

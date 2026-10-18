@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { IntermittensState } from '$lib/app/state.svelte';
+	import type { IntrState } from '$lib/app/state.svelte';
 	import { formatCurrency, formatDate, formatNumber } from '$lib/format';
 	import { buildMonthlyContractBreakdown, currentMonthKey, monthLabel } from '$lib/stats';
 	import type { Contract, IntermittencePeriod } from '$lib/types';
@@ -10,7 +10,7 @@
 		state: appState,
 		title = 'Calendrier',
 		panelClass = ''
-	}: { state: IntermittensState; title?: string; panelClass?: string } = $props();
+	}: { state: IntrState; title?: string; panelClass?: string } = $props();
 
 	let calendarMode = $state<CalendarMode>('month');
 	let calendarMonth = $state(currentMonthKey());

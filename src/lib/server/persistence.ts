@@ -1,13 +1,13 @@
-// Persistence backends for InterMittens.
+// Persistence backends for INTR.
 //
-// - Local filesystem (original behaviour): data/intermittens.json + data/documents/
+// - Local filesystem (original behaviour): data/intr.json + data/documents/
 // - kDrive (hosted deployment on Vercel): the same layout inside one kDrive folder
-//     <KDRIVE_FOLDER_ID>/intermittens.json
+//     <KDRIVE_FOLDER_ID>/intr.json
 //     <KDRIVE_FOLDER_ID>/documents/<stored files>
 //
 // kDrive is selected automatically when KDRIVE_TOKEN, KDRIVE_DRIVE_ID and KDRIVE_FOLDER_ID are set.
 // The token stays on the server; the browser never talks to kDrive directly.
-// Deleted files go to the kDrive trash, and replacing intermittens.json keeps kDrive's versions.
+// Deleted files go to the kDrive trash, and replacing intr.json keeps kDrive's versions.
 
 import { mkdir, readFile, readdir, rename, unlink, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -20,10 +20,10 @@ import { KdriveClient, KdriveError } from '$lib/server/kdriveClient.js';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 export const dataDir = path.join(root, 'data');
 export const documentDir = path.join(dataDir, 'documents');
-const dataFile = path.join(dataDir, 'intermittens.json');
+const dataFile = path.join(dataDir, 'intr.json');
 const documentDirResolved = path.resolve(documentDir);
 
-export const DATA_FILE_NAME = 'intermittens.json';
+export const DATA_FILE_NAME = 'intr.json';
 export const DOCUMENTS_FOLDER_NAME = 'documents';
 
 export interface PersistenceBackend {

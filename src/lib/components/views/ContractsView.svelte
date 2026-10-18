@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { statuses, type IntermittensState } from '$lib/app/state.svelte';
+	import { statuses, type IntrState } from '$lib/app/state.svelte';
 	import DateInput from '$lib/components/DateInput.svelte';
 	import DocumentList from '$lib/components/DocumentList.svelte';
 	import DocumentPresence from '$lib/components/DocumentPresence.svelte';
@@ -7,7 +7,7 @@
 	import { formatCurrency, formatDate, formatNumber } from '$lib/format';
 	import type { Contract, IntermittencePeriod } from '$lib/types';
 
-	let { state: appState }: { state: IntermittensState } = $props();
+	let { state: appState }: { state: IntrState } = $props();
 	let selectedContractsPeriodKey = $state('all');
 
 	let contractCalendarYears = $derived(

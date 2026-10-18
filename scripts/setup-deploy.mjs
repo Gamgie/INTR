@@ -253,7 +253,7 @@ async function setupSftpRemote(config, configPath) {
 	const { default: SftpClient } = await import('ssh2-sftp-client');
 	const source = relativeProjectPath(configPath);
 	const remoteRoot = trimTrailingSlash(String(requireConfigValue(config, 'remotePath', source)));
-	const client = new SftpClient('intermittens-setup');
+	const client = new SftpClient('intr-setup');
 
 	console.log(`> sftp remote directory setup (${source})`);
 	await client.connect(await sftpConnectionConfig(config, source));

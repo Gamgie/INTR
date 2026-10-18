@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { base } from '$app/paths';
 	import ServerStatus from '$lib/components/ServerStatus.svelte';
-	import type { IntermittensState, Tab } from '$lib/app/state.svelte';
+	import type { IntrState, Tab } from '$lib/app/state.svelte';
 	import { tabs } from '$lib/app/state.svelte';
 
-	let { state, children }: { state: IntermittensState; children: import('svelte').Snippet } =
+	let { state, children }: { state: IntrState; children: import('svelte').Snippet } =
 		$props();
 
 	const autoSaveDelayMs = 900;
@@ -36,7 +36,7 @@
 		<div class="brand">
 			<div class="brand-mark">IM</div>
 			<div>
-				<h1>InterMittens</h1>
+				<h1>INTR</h1>
 				<p>
 					{state.appData.contracts.length} contrats · {state.appData.companies.length} structures
 				</p>

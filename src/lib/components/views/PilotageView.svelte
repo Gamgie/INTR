@@ -1,5 +1,5 @@
 ﻿<script lang="ts">
-	import type { IntermittensState } from '$lib/app/state.svelte';
+	import type { IntrState } from '$lib/app/state.svelte';
 	import Calendar from '$lib/components/Calendar.svelte';
 	import DocumentPresence from '$lib/components/DocumentPresence.svelte';
 	import { formatCurrency, formatDate, formatNumber } from '$lib/format';
@@ -7,7 +7,7 @@
 	import { buildMonthlyContractBreakdown, contractRecognizedHours, monthLabel } from '$lib/stats';
 	import type { Contract } from '$lib/types';
 
-	let { state: appState }: { state: IntermittensState } = $props();
+	let { state: appState }: { state: IntrState } = $props();
 
 	const declarationDayFormatter = new Intl.DateTimeFormat('fr-FR', {
 		weekday: 'long',

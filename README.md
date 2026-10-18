@@ -1,10 +1,10 @@
-# InterMittens
+# INTR
 
 Application SvelteKit de gestion d’intermittence: structures, projets, contrats, documents,
 notifications ARE, périodes d’intermittence et statistiques.
 
 > **Version de Clément (Gamgie/INTR)**, portée depuis [benkuper/InterMittens](https://github.com/benkuper/InterMittens) :
-> hébergement Vercel sur intermittent.gamgie.com, données dans kDrive, installable sur iPhone,
+> hébergement Vercel sur intr.gamgie.com, données dans kDrive, installable sur iPhone,
 > calculs alignés sur les annexes 8 et 10 de la convention du 15 novembre 2024 (`src/lib/rules.ts`).
 > Mise en ligne : [docs/INSTALLATION.md](docs/INSTALLATION.md).
 
@@ -22,7 +22,7 @@ L’interface locale tourne par défaut sur `http://127.0.0.1:5173/`.
 Les données sont stockées dans:
 
 ```txt
-data/intermittens.json
+data/intr.json
 data/documents/
 ```
 
@@ -45,14 +45,14 @@ aux 20 premières pages scannées d'un même fichier.
 4. Un reverse proxy HTTPS qui expose l’app sur:
 
 ```txt
-https://<site.com>/intermittens
+https://<site.com>/intr
 ```
 
 Build et lancement:
 
 ```sh
 npm ci
-$env:BASE_PATH="/intermittens" # PowerShell
+$env:BASE_PATH="/intr" # PowerShell
 npm run build
 $env:HOST="127.0.0.1"
 $env:PORT="3017"
@@ -62,14 +62,14 @@ node build
 Sous Linux/systemd, l’équivalent:
 
 ```sh
-BASE_PATH=/intermittens npm run build
+BASE_PATH=/intr npm run build
 HOST=127.0.0.1 PORT=3017 node build
 ```
 
 Reverse proxy Nginx indicatif:
 
 ```nginx
-location /intermittens/ {
+location /intr/ {
     proxy_pass http://127.0.0.1:3017;
     proxy_http_version 1.1;
     proxy_set_header Host $host;
@@ -81,7 +81,7 @@ location /intermittens/ {
 Dans l’app locale, onglet `Intermittence`:
 
 ```txt
-URL serveur: https://yoursite.fr/intermittens
+URL serveur: https://yoursite.fr/intr
 Synchro distante: Oui
 ```
 
@@ -154,7 +154,7 @@ limite.
 
 Sur un hebergement Plesk/Passenger avec Node.js active, configure l'application
 Node dans Plesk avec `_passenger.cjs` comme fichier de demarrage, ou `app.js` /
-`server.js` si ton panneau ne propose pas les fichiers `.cjs`, et `/intermittens`
+`server.js` si ton panneau ne propose pas les fichiers `.cjs`, et `/intr`
 comme chemin public/base URI. Le script touche `tmp/restart.txt` pour demander un
 redemarrage au prochain acces.
 

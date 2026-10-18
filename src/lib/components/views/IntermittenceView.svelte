@@ -1,14 +1,14 @@
 ﻿<script lang="ts">
 	import { base } from '$app/paths';
 
-	import type { IntermittensState } from '$lib/app/state.svelte';
+	import type { IntrState } from '$lib/app/state.svelte';
 	import DateInput from '$lib/components/DateInput.svelte';
 	import KdriveImport from '$lib/components/KdriveImport.svelte';
 	import { formatCurrency, formatNumber, formatPreciseCurrency } from '$lib/format';
 	import { ANNEXES, RULES } from '$lib/rules';
 	import { estimateDailyAllowanceDetail } from '$lib/stats';
 
-	let { state }: { state: IntermittensState } = $props();
+	let { state }: { state: IntrState } = $props();
 	let allowanceDetail = $derived(
 		state.reference.hours && state.reference.grossSalary
 			? estimateDailyAllowanceDetail(state.appData)
@@ -274,9 +274,6 @@
 				<h3>Hébergement données</h3>
 				<div class="button-row">
 					<button type="button" onclick={state.cleanupUnusedFiles}>Clean fichiers</button>
-					<a href="https://benjamin.kuperberg.fr/intermittens" target="_blank" rel="noreferrer">
-						Ouvrir
-					</a>
 				</div>
 			</div>
 			<p class="sync-note">

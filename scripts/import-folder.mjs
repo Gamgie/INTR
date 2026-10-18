@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Importe en masse un dossier de documents dans une instance InterMittens (locale ou en ligne),
+// Importe en masse un dossier de documents dans une instance INTR (locale ou en ligne),
 // par le même chemin que le bouton « Importer » : chaque fichier est analysé, classé
 // (contrat, bulletin, AEM, notification ARE...) et rattaché au bon contrat.
 //

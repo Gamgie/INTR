@@ -97,7 +97,7 @@ export function createDefaultData(): AppData {
 			ghsLastSyncAt: '',
 			ghsLastSyncStatus: 'Connecteur non configuré',
 			activePeriodId: '',
-			remoteBaseUrl: 'https://yoursite.fr/intermittens',
+			remoteBaseUrl: 'https://yoursite.fr/intr',
 			remoteSyncEnabled: false,
 			remoteLastSyncAt: '',
 			remoteLastSyncStatus: 'Synchronisation distante non activée',

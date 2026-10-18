@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { IntermittensState } from '$lib/app/state.svelte';
+	import type { IntrState } from '$lib/app/state.svelte';
 	import CompanySearch from '$lib/components/CompanySearch.svelte';
 	import type { Company } from '$lib/types';
 
@@ -7,7 +7,7 @@
 		company,
 		state,
 		onclose
-	}: { company: Company; state: IntermittensState; onclose: () => void } = $props();
+	}: { company: Company; state: IntrState; onclose: () => void } = $props();
 
 	function removeCompany() {
 		state.removeCompany(company);

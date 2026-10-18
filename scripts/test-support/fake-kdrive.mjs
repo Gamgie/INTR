@@ -1,4 +1,4 @@
-// In-memory imitation of the kDrive API endpoints used by InterMittens, for tests only.
+// In-memory imitation of the kDrive API endpoints used by INTR, for tests only.
 // Mirrors the shapes from Infomaniak's MCP server: { result, data, has_more, cursor }, page size 10.
 import http from 'node:http';
 
@@ -7,7 +7,7 @@ export function startFakeKdrive({ port = 0, driveId = '42', token = 'test-token'
 	const nodes = new Map(); // id -> { id, name, type, parent_id, data?, versions }
 	const trash = [];
 	nodes.set(1, { id: 1, name: 'root', type: 'dir', parent_id: 0 });
-	const appFolder = { id: nextId++, name: 'InterMittens', type: 'dir', parent_id: 1 };
+	const appFolder = { id: nextId++, name: 'INTR', type: 'dir', parent_id: 1 };
 	nodes.set(appFolder.id, appFolder);
 	const stats = { uploads: 0, replaced: 0, downloads: 0, lists: 0 };
 
