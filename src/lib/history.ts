@@ -75,6 +75,12 @@ export function buildYearHistory(data: AppData, today = new Date()): YearHistory
 		entry.congeSpectacle += info.congeSpectacle;
 	}
 
+	// Indemnités Congés Spectacles saisies pour l'année entière (classeur, relevé Audiens).
+	for (const [yearText, amount] of Object.entries(data.settings.congesSpectaclesByYear ?? {})) {
+		const entry = byYear.get(Number(yearText));
+		if (entry) entry.congeSpectacle += Number(amount) || 0;
+	}
+
 	const target = data.settings.targetHours || 507;
 	return years.map((year) => {
 		const { contractList, ...entry } = byYear.get(year.year)!;

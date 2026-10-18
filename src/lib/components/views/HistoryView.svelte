@@ -26,6 +26,15 @@
 		app.touch();
 	}
 
+	function setConges(year: number, value: string) {
+		const amount = Number(value.replace(',', '.'));
+		const next = { ...(app.appData.settings.congesSpectaclesByYear ?? {}) };
+		if (amount > 0) next[String(year)] = amount;
+		else delete next[String(year)];
+		app.appData.settings.congesSpectaclesByYear = next;
+		app.touch();
+	}
+
 	function openYear(key: string, isCurrent: boolean) {
 		app.selectPeriod(isCurrent ? '' : key);
 		app.activeTab = 'pilotage';
@@ -130,6 +139,16 @@
 				<DateInput
 					value={anniversaryValue(entry.year.year)}
 					onchange={(value: string) => setAnniversary(entry.year.year, value)}
+				/>
+			</label>
+			<label class="anniversary">
+				<span>Indemnités Congés Spectacles de l’année</span>
+				<input
+					type="number"
+					min="0"
+					step="0.01"
+					value={app.appData.settings.congesSpectaclesByYear?.[String(entry.year.year)] ?? ''}
+					onchange={(event) => setConges(entry.year.year, (event.currentTarget as HTMLInputElement).value)}
 				/>
 			</label>
 		</article>

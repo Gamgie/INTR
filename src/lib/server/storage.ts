@@ -105,6 +105,7 @@ export function createDefaultData(): AppData {
 			remoteLastSyncStatus: 'Synchronisation distante non activée',
 			kdriveSourceFolder: '',
 			anniversaries: { '2026': '2026-11-15' },
+			congesSpectaclesByYear: {},
 			ownerFirstName: 'Clément',
 			employerNames: {}
 		}
@@ -300,6 +301,16 @@ function normalizeAnniversaries(value: unknown): Record<string, string> {
 	);
 }
 
+function normalizeYearAmounts(value: unknown): Record<string, number> {
+	if (!value || typeof value !== 'object') return {};
+	return Object.fromEntries(
+		Object.entries(value as Record<string, unknown>)
+			.filter(([year]) => /^\d{4}$/.test(year))
+			.map(([year, amount]) => [year, normalizeNumber(amount)])
+			.filter(([, amount]) => Number(amount) > 0)
+	);
+}
+
 function normalizeKdriveMove(item: Partial<KdriveMove>): KdriveMove {
 	return {
 		batchId: cleanString(item.batchId),
@@ -358,6 +369,7 @@ export function normalizeData(input: Partial<AppData>): AppData {
 			annex: normalizeAnnex(settings.annex),
 			kdriveSourceFolder: cleanString(settings.kdriveSourceFolder),
 			anniversaries: normalizeAnniversaries(settings.anniversaries),
+			congesSpectaclesByYear: normalizeYearAmounts(settings.congesSpectaclesByYear),
 			ownerFirstName: cleanString(settings.ownerFirstName) || 'Clément',
 			employerNames: normalizeEmployerNames(settings.employerNames),
 			targetHours: normalizeNumber(settings.targetHours) || defaults.settings.targetHours,

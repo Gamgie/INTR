@@ -158,6 +158,8 @@ export type AppSettings = {
 	remoteLastSyncStatus: string;
 	/** Dates anniversaire saisies à la main, par année d'intermittence ({ "2026": "2026-11-15" }). */
 	anniversaries: Record<string, string>;
+	/** Indemnités Congés Spectacles par année d'intermittence ({ "2025": 725.6 }). */
+	congesSpectaclesByYear: Record<string, number>;
 	/** Prénom (ancien modèle de noms de fichiers). */
 	ownerFirstName: string;
 	/** Noms d'employeurs corrigés à la main, par SIREN (« 213502388 » → « Ville de Rennes - Opéra »). */
