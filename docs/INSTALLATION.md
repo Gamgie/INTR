@@ -94,8 +94,11 @@ Toujours dans **Intermittence**, panneau **Ranger le dossier kDrive** (après l'
 1. **Préparer le rangement** : l'app montre où ira chaque fichier, sans rien toucher.
    - Année en cours (ou à venir) : `2026/MM/Employeur/`
    - Années passées : `Archive/AAAA/MM/Employeur/`
-   - Nom : `EMPLOYEUR Type Clément MM.AAAA.pdf` (Type : Paie, Contrat, AEM, Congés Spectacles,
-     GUSO, Notification ARE). Deux fichiers de même nom prennent « 2 », « 3 »…
+   - Nom : `[CODE] AAAA-MM-JJ Employeur.pdf`, par exemple `[BP] 2026-07-14 Compagnie Gamgie.pdf`.
+     Codes : `[BP]` bulletin de paie, `[AEM]`, `[CS]` Congés Spectacles, `[CT]` contrat de travail,
+     `[ARE]` notification France Travail, `[GUSO]`, `[DOC]` autre document. Quand seul le mois
+     est connu (fichier non analysé), le nom porte `AAAA-MM`. Deux fichiers de même nom prennent
+     « 2 », « 3 »…
    - « Année » = année d'intermittence : du lendemain d'une date anniversaire à la suivante.
      Fin novembre et décembre de l'année civile précédente vont dans `MM (AAAA)`, par exemple
      `2026/12 (2025)/`, pour ne pas se mêler au même mois de l'année suivante.

@@ -240,7 +240,7 @@ try {
 		assert.equal(planResponse.status, 200, `plan: ${plan.message}`);
 		const targets = Object.fromEntries(plan.moves.map((move) => [move.fromPath, move.toPath]));
 		assert.ok(targets['2025/contrat-octobre.pdf'], 'contrat d’octobre à ranger');
-		assert.match(targets['Archive/[AEM] 2024-11-09 Baron Production.pdf'], /^Archive\/2024\/11\/Baron Production\/Baron Production AEM Clément 11\.2024\.pdf$/);
+		assert.match(targets['Archive/[AEM] 2024-11-09 Baron Production.pdf'], /^Archive\/2024\/11\/Baron Production\/\[AEM\] 2024-11-09 Baron Production\.pdf$/);
 		assert.ok(plan.skipped.some((skip) => skip.path === 'Déclaration.xlsx'), 'tableur laissé');
 
 		const before = plan.moves.map((move) => [move.fileId, intoTree(move.fileId)]);

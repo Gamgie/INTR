@@ -171,8 +171,9 @@
 	<p class="muted">
 		Range chaque document importé dans <strong>Année/Mois/Employeur</strong> (années
 		d’intermittence, selon ta date anniversaire), les années passées sous <strong>Archive</strong>,
-		et le renomme « EMPLOYEUR Type {app.appData.settings.ownerFirstName} MM.AAAA ». Rien ne bouge
-		avant que tu valides l’aperçu, et chaque rangement peut être annulé.
+		et le renomme « [BP] AAAA-MM-JJ Employeur » ([BP] bulletin de paie, [AEM], [CS] Congés
+		Spectacles, [CT] contrat, [ARE] notification, [GUSO], [DOC] autre). Rien ne bouge avant que tu
+		valides l’aperçu, et chaque rangement peut être annulé.
 	</p>
 
 	{#if !folder()}

@@ -1,7 +1,9 @@
 // Plan de rangement du dossier kDrive d'intermittence.
 //
-//   <dossier>/<année en cours ou à venir>/<MM>/<Employeur>/<EMPLOYEUR Type Prénom MM.AAAA>.pdf
-//   <dossier>/Archive/<année passée>/<MM>/<Employeur>/<EMPLOYEUR Type Prénom MM.AAAA>.pdf
+//   <dossier>/<année en cours ou à venir>/<MM>/<Employeur>/[BP] AAAA-MM-JJ Employeur.pdf
+//   <dossier>/Archive/<année passée>/<MM>/<Employeur>/[CT] AAAA-MM-JJ Employeur.pdf
+// Codes : [BP] bulletin de paie, [AEM], [CS] Congés Spectacles, [CT] contrat de travail,
+// [ARE] notification France Travail, [GUSO], [DOC] autre document.
 //
 // « Année » = année d'intermittence (date anniversaire). Un mois de l'année civile précédente
 // (fin novembre, décembre) prend le nom « 12 (2025) » pour ne pas se mêler au même mois de
@@ -51,27 +53,29 @@ export type OrganizePlan = {
 	currentYear: number;
 };
 
+/** Code en tête du nom de fichier : « [BP] 2026-07-26 Compagnie Gamgie.pdf ». */
 const TYPE_LABELS: Record<DocumentKind, string> = {
-	Contrat: 'Contrat',
-	'Fiche de paie': 'Paie',
+	Contrat: 'CT',
+	'Fiche de paie': 'BP',
 	AEM: 'AEM',
-	'Congé Spectacle': 'Congés Spectacles',
+	'Congé Spectacle': 'CS',
 	'Déclaration Guso': 'GUSO',
-	'Notification ARE': 'Notification ARE',
-	Autre: 'Document'
+	'Notification ARE': 'ARE',
+	Autre: 'DOC'
 };
 
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
 
-/** Type lisible dans un nom non analysé : [AEM], [CTT], [BP], [CS], « Bulletin de paie »… */
+/** Code lisible dans un nom non analysé : [AEM], [CTT], [CT], [BP], [CS], « Bulletin de paie »… */
 function typeFromName(name: string) {
 	const lower = name.toLowerCase();
 	if (/\[aem\]|\baem\b/.test(lower)) return 'AEM';
-	if (/\[ctt\]|contrat/.test(lower)) return 'Contrat';
-	if (/\[bp\]|bulletin|paie/.test(lower)) return 'Paie';
-	if (/\[cs\]|cong[eé]s? spectacle/.test(lower)) return 'Congés Spectacles';
+	if (/\[ctt?\]|contrat/.test(lower)) return 'CT';
+	if (/\[bp\]|bulletin|paie/.test(lower)) return 'BP';
+	if (/\[cs\]|cong[eé]s? spectacle/.test(lower)) return 'CS';
+	if (/\[are\]|notification/.test(lower)) return 'ARE';
 	if (/guso/.test(lower)) return 'GUSO';
-	return 'Document';
+	return 'DOC';
 }
 
 /** Retire les caractères interdits dans un nom kDrive et les espaces superflus. */
@@ -116,6 +120,11 @@ export function dateFromText(text: string) {
 		if (date) return date;
 	}
 	return '';
+}
+
+/** Vrai si le texte contient une date complète (avec le jour), pas seulement un mois. */
+function hasFullDate(text: string) {
+	return /(20\d{2})[_\-. ](\d{2})[_\-. ](\d{2})/.test(text) || /(\d{2})[_\-./](\d{2})[_\-./](20\d{2})/.test(text);
 }
 
 /** Employeur déduit du chemin quand l'analyse n'en donne pas (…/AAAA/MM/Employeur/fichier). */
@@ -163,16 +172,27 @@ function canonicalEmployer(data: AppData, candidate: string) {
 	return '';
 }
 
-function chooseEmployer(data: AppData, candidates: string[]) {
+/**
+ * Premier candidat qui correspond à une structure connue ; sinon une structure connue citée dans
+ * le nom du fichier ; sinon le premier candidat tel quel.
+ */
+function chooseEmployer(data: AppData, candidates: string[], fileName = '') {
 	const present = candidates.map((value) => value.trim()).filter(Boolean);
 	for (const candidate of present) {
 		const known = canonicalEmployer(data, candidate);
 		if (known) return known;
 	}
-	return present[0] ?? '';
+	return canonicalEmployer(data, fileName.replace(/\.[a-z0-9]{2,5}$/i, '')) || present[0] || '';
 }
 
-type Classification = { date: string; employer: string; type: string; basis: OrganizeMove['basis'] };
+type Classification = {
+	date: string;
+	employer: string;
+	type: string;
+	basis: OrganizeMove['basis'];
+	/** Faux quand seul le mois est connu (nom « 05.2022 », dossier « 2024/06 »). */
+	dayKnown?: boolean;
+};
 
 function classify(data: AppData, file: OrganizeSource): Classification | undefined {
 	const record = data.kdriveImports.find((item) => item.fileId === file.id && item.status === 'importé');
@@ -194,8 +214,8 @@ function classify(data: AppData, file: OrganizeSource): Classification | undefin
 				employerFromName(file.name),
 				employerFromText(document.extractedTextPreview ?? ''),
 				employerFromPath(file.path)
-			]),
-			type: TYPE_LABELS[document.kind] ?? 'Document',
+			], file.name),
+			type: TYPE_LABELS[document.kind] ?? 'DOC',
 			basis: 'analyse'
 		});
 	}
@@ -205,7 +225,7 @@ function classify(data: AppData, file: OrganizeSource): Classification | undefin
 		const date = [period?.admissionDate, period?.indemnizationStartDate, period?.anniversaryDate].find(
 			(value): value is string => Boolean(value && ISO.test(value))
 		);
-		if (date) candidates.push({ date, employer: 'France Travail', type: 'Notification ARE', basis: 'analyse' });
+		if (date) candidates.push({ date, employer: 'France Travail', type: 'ARE', basis: 'analyse' });
 	}
 
 	if (candidates.length) {
@@ -213,11 +233,13 @@ function classify(data: AppData, file: OrganizeSource): Classification | undefin
 		return [...candidates].sort((a, b) => a.date.localeCompare(b.date))[0];
 	}
 
-	const date = dateFromText(file.name) || dateFromText(file.path);
+	const fromName = dateFromText(file.name);
+	const date = fromName || dateFromText(file.path);
 	if (!date) return undefined;
 	return {
 		date,
-		employer: chooseEmployer(data, [employerFromName(file.name), employerFromPath(file.path)]),
+		dayKnown: Boolean(fromName) && hasFullDate(file.name),
+		employer: chooseEmployer(data, [employerFromName(file.name), employerFromPath(file.path)], file.name),
 		type: typeFromName(file.name),
 		basis: 'nom du fichier'
 	};
@@ -229,7 +251,6 @@ export function buildOrganizePlan(
 	today = new Date()
 ): OrganizePlan {
 	const currentYear = currentIntermittenceYear(data, today).year;
-	const firstName = cleanName(data.settings.ownerFirstName || 'Clément');
 	const moves: OrganizeMove[] = [];
 	const skipped: OrganizeSkip[] = [];
 	const taken = new Set<string>();
@@ -261,7 +282,7 @@ export function buildOrganizePlan(
 			file,
 			found: { ...found, employer },
 			toDirs: [...(year < currentYear ? [ARCHIVE_FOLDER] : []), String(year), monthFolder, employer],
-			base: cleanName(`${employer} ${found.type} ${firstName} ${month}.${calendarYear}`),
+			base: cleanName(`[${found.type}] ${found.dayKnown === false ? found.date.slice(0, 7) : found.date} ${employer}`),
 			ext: extension(file.name) || '.pdf'
 		});
 	}

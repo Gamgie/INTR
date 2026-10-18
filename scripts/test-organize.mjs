@@ -35,11 +35,12 @@ try {
 			document('d2', 'k2', 'Fiche de paie'),
 			document('d3', 'k3', 'Contrat', 'CONTRAT\nEmployeur : Ultreia\nSIRET 123'),
 			document('d4', 'k4', 'Fiche de paie'),
-			document('d5', 'k5', 'Fiche de paie')
+			document('d5', 'k5', 'Fiche de paie'),
+			document('d6', 'k5', 'Fiche de paie')
 		],
 		periods: [{ id: 'p1', admissionDate: '2025-11-28', anniversaryDate: '2026-11-15' }],
 		monthlyInfos: [],
-		kdriveImports: [imported(1, ['d1']), imported(2, ['d2']), imported(3, ['d3']), imported(4, ['d4']), imported(5, ['d5']), imported(9, [], ['p1'])],
+		kdriveImports: [imported(1, ['d1']), imported(2, ['d2']), imported(3, ['d3']), imported(4, ['d4']), imported(5, ['d5']), imported(9, [], ['p1']), imported(12, ['d6'])],
 		settings: { activePeriodId: '', anniversaries: { 2026: '2026-11-15' }, ownerFirstName: 'Clément' }
 	};
 	const files = [
@@ -52,21 +53,25 @@ try {
 		file(7, 'Ressource/guide intermittence.pdf'),
 		file(8, 'Déclaration.xlsx', false),
 		file(9, 'notification.pdf'),
-		file(10, 'Archive/notes sans date.pdf')
+		file(10, 'Archive/notes sans date.pdf'),
+		file(11, 'Archive/2022/THEORIZ Paie Clément 05.2022.pdf'),
+		file(12, '2026/04/Compagnie Gamgie/bp avril bis.pdf')
 	];
 
 	const plan = buildOrganizePlan(data, files, today);
 	const target = Object.fromEntries(plan.moves.map((move) => [move.fileId, move.toPath]));
 
 	assert.equal(plan.currentYear, 2026);
-	assert.equal(target[1], 'Archive/2022/05/THEORIZ/THEORIZ Paie Clément 05.2022.pdf', 'exemple de Clément');
-	assert.equal(target[2], '2026/07/Compagnie Gamgie/Compagnie Gamgie Paie Clément 07.2026.pdf', 'employeur via le nom Zeendoc');
-	assert.equal(target[3], '2026/12 (2025)/Ultreia/Ultreia Contrat Clément 12.2025.pdf', 'décembre 2025 dans l’année 2026');
-	assert.equal(target[4], '2026/04/Compagnie Gamgie/Compagnie Gamgie Paie Clément 04.2026.pdf');
-	assert.equal(target[5], '2026/04/Compagnie Gamgie/Compagnie Gamgie Paie Clément 04.2026 2.pdf', 'homonyme numéroté');
-	assert.equal(target[6], 'Archive/2024/11/Baron Production/Baron Production AEM Clément 11.2024.pdf', 'sans analyse, d’après le nom');
+	assert.equal(target[1], 'Archive/2022/05/THEORIZ/[BP] 2022-05-03 THEORIZ.pdf', 'bulletin THEORIZ de mai 2022');
+	assert.equal(target[2], '2026/07/Compagnie Gamgie/[BP] 2026-07-14 Compagnie Gamgie.pdf', 'employeur via le nom Zeendoc');
+	assert.equal(target[3], '2026/12 (2025)/Ultreia/[CT] 2025-12-02 Ultreia.pdf', 'décembre 2025 dans l’année 2026');
+	assert.equal(target[4], '2026/04/Compagnie Gamgie/[BP] 2026-04-10 Compagnie Gamgie.pdf');
+	assert.equal(target[5], '2026/04/Compagnie Gamgie/[BP] 2026-04-24 Compagnie Gamgie.pdf', 'jour dans le nom');
+	assert.equal(target[6], 'Archive/2024/11/Baron Production/[AEM] 2024-11-09 Baron Production.pdf', 'sans analyse, d’après le nom');
 	assert.equal(plan.moves.find((move) => move.fileId === 6).basis, 'nom du fichier');
-	assert.equal(target[9], '2026/11 (2025)/France Travail/France Travail Notification ARE Clément 11.2025.pdf');
+	assert.equal(target[12], '2026/04/Compagnie Gamgie/[BP] 2026-04-24 Compagnie Gamgie 2.pdf', 'homonyme numéroté');
+	assert.equal(target[11], 'Archive/2022/05/THEORIZ/[BP] 2022-05 THEORIZ.pdf', 'jour inconnu : année-mois seulement');
+	assert.equal(target[9], '2026/11 (2025)/France Travail/[ARE] 2025-11-28 France Travail.pdf');
 	assert.deepEqual(
 		plan.skipped.map((skip) => [skip.fileId, skip.reason]).sort(),
 		[[10, 'aucune date trouvée (importe-le d’abord)'], [7, 'dossier Ressource laissé tel quel'], [8, 'format non analysé']].sort()
