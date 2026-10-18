@@ -247,6 +247,22 @@ try {
 		assert.equal((await call(`/api/kdrive/original?id=${outside.id}`)).status, 403, 'hors du dossier source : refusé');
 	}
 
+	// --- Document envoyé directement à l'app : l'original est rangé dans le dossier source ---
+	{
+		const payload = await importFile('envoi-direct.pdf', await scannedContractPdf('Compagnie Rangee', 0, 5, 3));
+		const note = payload.analysis.notes.find((text) => text.startsWith('Original'));
+		assert.ok(note?.includes('2026/05/'), `original rangé (${note})`);
+		const pathOf = (node) => {
+			const parts = [];
+			for (let current = node; current && current.id !== source.id; current = kdrive.nodes.get(current.parent_id)) parts.unshift(current.name);
+			return parts.join('/');
+		};
+		const stored = [...kdrive.nodes.values()].find((node) => node.type === 'file' && node.name.startsWith('[CT] 2026-05-03'));
+		assert.ok(stored && pathOf(stored).startsWith('2026/05/'), `fichier dans kDrive (${stored && pathOf(stored)})`);
+		const data = await (await call('/api/data')).json();
+		assert.ok(data.kdriveImports.some((record) => record.fileId === stored.id), 'noté comme importé');
+	}
+
 	// --- Deep tree and pagination (fake kDrive pages by 10) ---
 	const deep = kdrive.addDir(1, 'Profond');
 	const level1 = kdrive.addDir(deep.id, '2024');

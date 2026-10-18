@@ -23,6 +23,8 @@ import {
 } from '$lib/server/contractMatching';
 import { documentKindFromFileName, splitAndClassifyDocument } from '$lib/server/pdfParts';
 import { consolidateContract } from '$lib/server/payslipFigures';
+import { kdriveConfigured } from '$lib/server/persistence';
+import { saveToSource, sourcePlace } from '$lib/server/sourceArchive';
 import {
 	isRemoteSyncEnabled,
 	isSameDeployment,
@@ -813,6 +815,40 @@ async function importDocument({ request, url }: Parameters<RequestHandler>[0]) {
 		companySuggestions = companySuggestions.filter(
 			(suggestion) => !autoKeys.has(`${suggestion.contractId}:${suggestion.siret}`)
 		);
+	}
+
+	// Le kDrive fait foi : un document envoyé directement à l'app (pas depuis kDrive) y est
+	// rangé à sa place, puis noté comme importé pour ne pas être relu une seconde fois.
+	let sourceNote = '';
+	if (String(form.get('origin') ?? '') !== 'kdrive' && kdriveConfigured() && data.settings.kdriveSourceFolder) {
+		const contract = data.contracts.find((item) => item.id === resolvedContractId);
+		if (contract && preparedDocuments.length) {
+			try {
+				const extension = file.name.match(/\.[a-z0-9]{2,4}$/i)?.[0]?.toLowerCase() ?? '.pdf';
+				const place = sourcePlace(data, contract, preparedDocuments.map((document) => document.kind), extension);
+				const saved = await saveToSource(data.settings.kdriveSourceFolder, place.folders, place.name, new Uint8Array(buffer));
+				sourceNote = saved.created ? `Original rangé dans kDrive : ${saved.path}.` : `Original déjà dans kDrive : ${saved.path}.`;
+				const documentIds = preparedDocuments.map((document) => document.id);
+				data = await mutateData((current) => {
+					current.kdriveImports = [
+						...current.kdriveImports.filter((item) => item.fileId !== saved.id),
+						{
+							fileId: saved.id,
+							path: saved.path,
+							size: buffer.length,
+							importedAt: new Date().toISOString(),
+							status: 'importé',
+							message: 'Envoyé directement à l’app, original rangé dans kDrive.',
+							documentIds,
+							periodIds: preparedPeriods.map((period) => period.id)
+						}
+					];
+				});
+			} catch (cause) {
+				sourceNote = `Original non rangé dans kDrive : ${cause instanceof Error ? cause.message : String(cause)}`;
+			}
+			notes.push(sourceNote);
+		}
 	}
 
 	return json({

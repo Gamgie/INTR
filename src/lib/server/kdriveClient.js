@@ -226,6 +226,22 @@ export class KdriveClient {
 		return new Uint8Array(await response.arrayBuffer());
 	}
 
+	/** A file in the trash (404 when it is not there). @param {number | string} fileId */
+	async trashed(fileId) {
+		return (await this.json(`${API}/2/drive/${this.driveId}/trash/${fileId}`)).data;
+	}
+
+	/** Puts a trashed file back where it was. @param {number | string} fileId */
+	async restore(fileId) {
+		return (
+			await this.json(`${API}/2/drive/${this.driveId}/trash/${fileId}/restore`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: '{}'
+			})
+		).data;
+	}
+
 	/** Moves a file to the kDrive trash (recoverable). @param {number | string} fileId */
 	async trash(fileId) {
 		await this.json(`${API}/2/drive/${this.driveId}/files/${fileId}`, { method: 'DELETE' });

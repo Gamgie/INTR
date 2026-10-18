@@ -50,6 +50,7 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 		for (const bundle of bundles) {
 			const body = new FormData();
 			body.set('autoRoute', 'true');
+			body.set('origin', 'kdrive');
 			body.set('kind', 'Autre');
 			body.set('file', new File([new Uint8Array(bundle.buffer)], bundle.fileName, { type }));
 			const response = await fetch('/api/documents', { method: 'POST', body });
