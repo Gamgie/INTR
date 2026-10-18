@@ -10,6 +10,7 @@ import type { KdriveImport } from '$lib/types';
 // s'ils sont dans la corbeille), et les documents de l'app sans original dans kDrive.
 // POST { restore: [fileId] } : remet des fichiers de la corbeille à leur place.
 // POST { upload: [documentId] } : recrée l'original d'un document à partir de la copie de l'app.
+// POST { moves: [{ fileId, to, name }] } : déplace et renomme des fichiers du dossier source.
 export const GET: RequestHandler = async () => {
 	const access = kdriveAccess();
 	if (!access) error(404, 'kDrive n’est pas configuré sur ce serveur.');
@@ -46,7 +47,11 @@ export const GET: RequestHandler = async () => {
 export const POST: RequestHandler = async ({ request }) => {
 	const access = kdriveAccess();
 	if (!access) error(404, 'kDrive n’est pas configuré sur ce serveur.');
-	const body = (await request.json().catch(() => ({}))) as { restore?: number[]; upload?: string[] };
+	const body = (await request.json().catch(() => ({}))) as {
+		restore?: number[];
+		upload?: string[];
+		moves?: { fileId: number; to: string; name: string }[];
+	};
 	const results: unknown[] = [];
 
 	for (const fileId of (body.restore ?? []).slice(0, 20)) {
@@ -56,6 +61,46 @@ export const POST: RequestHandler = async ({ request }) => {
 		} catch (cause) {
 			results.push({ fileId, restored: false, message: cause instanceof Error ? cause.message : String(cause) });
 		}
+	}
+
+	// Déplacements et renommages dans le dossier source (« to » : chemin depuis sa racine).
+	// Un nom déjà pris dans le dossier d'arrivée reçoit « (2) » : aucun fichier n'est écrasé.
+	const moves = (body.moves ?? []).slice(0, 40);
+	const movedPaths = new Map<number, string>();
+	if (moves.length) {
+		const sourceId = parseFolderId((await readData()).settings.kdriveSourceFolder);
+		if (!sourceId) error(400, 'Aucun dossier source réglé.');
+		for (const move of moves) {
+			try {
+				const info = await access.client.info(move.fileId);
+				if (!info || info.type !== 'file') throw new Error('Fichier introuvable.');
+				let parentId: number = sourceId;
+				for (const folder of move.to.split('/').map((part) => part.trim()).filter(Boolean)) {
+					parentId = Number((await access.client.ensureDirectory(parentId, folder)).id);
+				}
+				const siblings = (await access.client.list(parentId)).filter((item) => item.id !== move.fileId);
+				let name = move.name.replace(/[\\/:*?"<>|]+/g, ' ').trim();
+				const dot = name.lastIndexOf('.');
+				for (let index = 2; siblings.some((item) => item.name === name); index += 1) {
+					name = `${move.name.slice(0, dot)} (${index})${move.name.slice(dot)}`;
+				}
+				if (Number(info.parent_id) !== parentId) await access.client.move(move.fileId, parentId);
+				if (info.name !== name) await access.client.rename(move.fileId, name);
+				results.push({ fileId: move.fileId, moved: true, path: `${move.to}/${name}` });
+				movedPaths.set(move.fileId, `${move.to}/${name}`);
+			} catch (cause) {
+				results.push({ fileId: move.fileId, moved: false, message: cause instanceof Error ? cause.message : String(cause) });
+			}
+		}
+	}
+
+	if (movedPaths.size) {
+		await mutateData((current) => {
+			for (const record of current.kdriveImports) {
+				const path = movedPaths.get(record.fileId);
+				if (path) record.path = path;
+			}
+		});
 	}
 
 	const data = await readData();
