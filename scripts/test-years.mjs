@@ -28,6 +28,13 @@ try {
 	assert.equal(years.yearOfDate(data, '2026-11-16'), 2027, 'le lendemain ouvre l’année suivante');
 	assert.equal(years.yearOfDate(data, '2022-05-10'), 2022);
 
+	// Période de référence d'une notification : son début suit l'anniversaire de l'année d'avant.
+	const withReference = base();
+	withReference.periods = [{ id: 'n2', anniversaryDate: '2024-11-30', referenceStartDate: '2022-12-03', referenceEndDate: '2023-11-30' }];
+	assert.equal(years.yearOfDate(withReference, '2022-12-01'), 2022, 'le 01/12/2022 est encore dans l’année 2022');
+	assert.equal(years.yearOfDate(withReference, '2022-12-02'), 2022);
+	assert.equal(years.yearOfDate(withReference, '2022-12-03'), 2023);
+
 	const current = years.currentIntermittenceYear(data, today);
 	assert.equal(current.year, 2026);
 	assert.equal(current.start, '2025-11-28');

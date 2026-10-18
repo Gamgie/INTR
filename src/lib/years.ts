@@ -68,6 +68,15 @@ function knownAnniversaries(data: AppData) {
 		}
 	}
 
+	// Le début de la période de référence d'une notification suit la date anniversaire de
+	// l'année précédente (référence du 03/12/2022 au 30/11/2023 : année 2022 close le 02/12/2022).
+	for (const period of data.periods ?? []) {
+		if (!ISO.test(period.referenceStartDate)) continue;
+		const date = addDays(period.referenceStartDate, -1);
+		const year = Number(date.slice(0, 4));
+		if (!known.has(year)) known.set(year, { year, date, source: 'notification' });
+	}
+
 	for (const [yearText, date] of Object.entries(data.settings.anniversaries ?? {})) {
 		const year = Number(yearText);
 		if (!Number.isInteger(year) || !ISO.test(date)) continue;
