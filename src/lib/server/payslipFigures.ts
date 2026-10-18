@@ -1,3 +1,4 @@
+import { unshift } from '$lib/employer';
 import type { Contract, ContractDocument, ContractFields, DocumentKind } from '$lib/types';
 
 // Chiffres lus dans le texte d'un document, par format connu (GHS sPAIEctacle, AEM GHS,
@@ -148,8 +149,10 @@ function readLitUpPayslip(text: string): Figures | undefined {
 	return figures;
 }
 
-export function readFigures(text: string, kind: DocumentKind): Figures | undefined {
-	if (!text) return undefined;
+export function readFigures(raw: string, kind: DocumentKind): Figures | undefined {
+	if (!raw) return undefined;
+	// Police décalée (« %XOOHWLQ » pour « Bulletin ») : on remet le texte d'aplomb.
+	const text = raw.includes('\u0003') && !/\b(?:du|de|le|la)\b/i.test(raw.slice(0, 400)) ? unshift(raw) : raw;
 	if (kind === 'Fiche de paie') {
 		if (isGhsPayslip(text)) return readGhsPayslip(text);
 		return readLitUpPayslip(text);
@@ -193,7 +196,9 @@ export function consolidateContract(contract: Contract, documents: ContractDocum
 
 	// Heures : celles de l'AEM, c'est ce que l'employeur déclare à France Travail (heures plus
 	// cachets à 12 h) ; le récapitulatif du bulletin compte parfois les cachets autrement.
-	const hourSource = aems.some((figures) => figures.hours)
+	// Seulement si chaque bulletin a son AEM : sinon une AEM manquante ferait perdre des heures.
+	const aemsCoverPayslips = aems.filter((figures) => figures.hours).length >= payslips.length;
+	const hourSource = aemsCoverPayslips && aems.some((figures) => figures.hours)
 		? aems
 		: payslips.some((figures) => figures.hours)
 			? payslips
