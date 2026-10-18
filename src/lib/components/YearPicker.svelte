@@ -25,3 +25,18 @@
 		<option value={ALL_YEARS}>Toutes les années</option>
 	</select>
 </label>
+
+<style>
+	.period-picker {
+		display: grid;
+		gap: 4px;
+		min-width: 0;
+	}
+
+	.period-picker select {
+		width: 100%;
+		min-width: 0;
+		max-width: 100%;
+		text-overflow: ellipsis;
+	}
+</style>

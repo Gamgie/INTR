@@ -77,7 +77,7 @@ Dans l'app, onglet **Intermittence**, panneau **Import depuis kDrive** :
 
 1. Colle l'adresse kDrive du dossier `Finance/Pole Emploi/Intermittence` (copiée depuis le
    navigateur), puis **Lire le dossier**. L'app liste ses sous-dossiers : `2022`, `2023`, `2024`,
-   `2026`, `GUSO`, `Audiens - Congé Spectacle`… `Archive` et `Ressource` sont décochés par défaut.
+   `2026`, `GUSO`, `Archive`… Tout est coché par défaut sauf `Ressource`.
 2. Coche ce que tu veux, puis **Importer**. Chaque fichier passe par la même analyse que le bouton
    « Importer » (classement, découpage des PDF multi-bulletins, OCR des scans, rattachement aux
    contrats). Garde la page ouverte : l'import se fait fichier par fichier, avec une barre de
@@ -86,6 +86,27 @@ Dans l'app, onglet **Intermittence**, panneau **Import depuis kDrive** :
    modifiés.
 
 Les fichiers Excel (comme `Déclaration.xlsx`) ne sont pas analysés par l'app.
+
+## 7. Ranger le dossier kDrive
+
+Toujours dans **Intermittence**, panneau **Ranger le dossier kDrive** (après l'import) :
+
+1. **Préparer le rangement** : l'app montre où ira chaque fichier, sans rien toucher.
+   - Année en cours (ou à venir) : `2026/MM/Employeur/`
+   - Années passées : `Archive/AAAA/MM/Employeur/`
+   - Nom : `EMPLOYEUR Type Clément MM.AAAA.pdf` (Type : Paie, Contrat, AEM, Congés Spectacles,
+     GUSO, Notification ARE). Deux fichiers de même nom prennent « 2 », « 3 »…
+   - « Année » = année d'intermittence : du lendemain d'une date anniversaire à la suivante.
+     Fin novembre et décembre de l'année civile précédente vont dans `MM (AAAA)`, par exemple
+     `2026/12 (2025)/`, pour ne pas se mêler au même mois de l'année suivante.
+   - Restent en place : `Ressource`, les fichiers non PDF/image, ceux sans date reconnue.
+2. **Ranger N fichiers** : fichier par fichier, avec une barre de progression.
+3. **Annuler le dernier rangement** remet chaque fichier à sa place et sous son ancien nom.
+4. **Dossiers vides à la corbeille** : les anciens dossiers vidés partent dans la corbeille kDrive
+   (récupérables).
+
+Les dates anniversaire se règlent dans l'onglet **Historique**. Après l'anniversaire de l'année
+en cours, relance le rangement : l'année qui se termine part dans `Archive`.
 
 ## Développement local
 

@@ -171,7 +171,22 @@ export type AppData = {
 	futureContracts: FutureContract[];
 	monthlyInfos: MonthlyInfo[];
 	kdriveImports: KdriveImport[];
+	/** Journal des rangements kDrive, pour pouvoir les annuler. */
+	kdriveMoves: KdriveMove[];
 	settings: AppSettings;
+};
+
+export type KdriveMove = {
+	batchId: string;
+	fileId: number;
+	fromParentId: number;
+	fromName: string;
+	fromPath: string;
+	toParentId: number;
+	toName: string;
+	toPath: string;
+	at: string;
+	undone: boolean;
 };
 
 /** A source file read from kDrive by « Importer depuis kDrive » (the original is never modified). */

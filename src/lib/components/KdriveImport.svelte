@@ -67,11 +67,11 @@
 			files = payload.files;
 			folderName = payload.folder.name;
 			truncated = payload.truncated;
-			// Archives and reference material are left unticked by default.
+			// Everything is ticked except reference material (Ressource).
 			selectedGroups = Object.fromEntries(
 				[...new Set(payload.files.map((file: SourceFile) => file.group))].map((group) => [
 					group,
-					!/archive|ressource/i.test(String(group))
+					!/^ressources?$/i.test(String(group))
 				])
 			);
 			app.appData.settings.kdriveSourceFolder = folderInput;

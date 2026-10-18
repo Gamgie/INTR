@@ -72,6 +72,27 @@ export function startFakeKdrive({ port = 0, driveId = '42', token = 'test-token'
 			nodes.set(n.id, n);
 			return send(res, 200, { result: 'success', data: meta(n) });
 		}
+		if (req.method === 'POST' && (m = url.pathname.match(`^/3/drive/${driveId}/files/(\\d+)/move/(\\d+)$`))) {
+			const n = nodes.get(Number(m[1]));
+			const dest = nodes.get(Number(m[2]));
+			if (!n || !dest || dest.type !== 'dir') return send(res, 404, { result: 'error', error: { code: 'object_not_found' } });
+			if (children(dest.id).some((other) => other.id !== n.id && other.name === n.name)) {
+				return send(res, 409, { result: 'error', error: { code: 'conflict_error', description: 'File already exists' } });
+			}
+			n.parent_id = dest.id;
+			stats.moves = (stats.moves ?? 0) + 1;
+			return send(res, 200, { result: 'success', data: meta(n) });
+		}
+		if (req.method === 'POST' && (m = url.pathname.match(`^/2/drive/${driveId}/files/(\\d+)/rename$`))) {
+			const n = nodes.get(Number(m[1]));
+			if (!n) return send(res, 404, { result: 'error', error: { code: 'object_not_found' } });
+			const { name } = JSON.parse(body.toString());
+			if (children(n.parent_id).some((other) => other.id !== n.id && other.name === name)) {
+				return send(res, 409, { result: 'error', error: { code: 'conflict_error', description: 'File already exists' } });
+			}
+			n.name = name;
+			return send(res, 200, { result: 'success', data: meta(n) });
+		}
 		if (req.method === 'GET' && (m = url.pathname.match(`^/2/drive/${driveId}/files/(\\d+)/download$`))) {
 			stats.downloads++;
 			const n = nodes.get(Number(m[1]));
@@ -105,7 +126,7 @@ export function startFakeKdrive({ port = 0, driveId = '42', token = 'test-token'
 
 	return new Promise((resolve) =>
 		server.listen(port, '127.0.0.1', () =>
-			resolve({ server, port: server.address().port, driveId, token, appFolderId: appFolder.id, nodes, trash, stats, children, addDir, addFile, move, setToken: (value) => { state.token = value; } })
+			resolve({ server, port: server.address().port, driveId, token, appFolderId: appFolder.id, nodes, trash, stats, children, addDir, addFile, move, pathOf: (id) => { const parts = []; let n = nodes.get(id); while (n && n.id !== 1) { parts.unshift(n.name); n = nodes.get(n.parent_id); } return parts.join('/'); }, setToken: (value) => { state.token = value; } })
 		)
 	);
 }

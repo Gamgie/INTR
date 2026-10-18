@@ -11,6 +11,8 @@ export type SourceFile = {
 	path: string;
 	/** First-level subfolder ("" for files directly in the source folder). */
 	group: string;
+	/** Folder that currently holds the file. */
+	parentId: number;
 	size: number;
 	importable: boolean;
 };
@@ -35,6 +37,7 @@ export async function scanSourceFolder(folderId: number) {
 
 	const folder = await access.client.info(folderId);
 	const files: SourceFile[] = [];
+	const dirs: Array<{ id: number; path: string; parentId: number }> = [];
 	const queue: Array<{ id: number; path: string; depth: number }> = [
 		{ id: folderId, path: '', depth: 0 }
 	];
@@ -47,6 +50,7 @@ export async function scanSourceFolder(folderId: number) {
 			const itemPath = current.path ? `${current.path}/${item.name}` : item.name;
 			if (item.type === 'dir') {
 				if (item.id === access.appFolderId) continue;
+				dirs.push({ id: item.id, path: itemPath, parentId: current.id });
 				if (current.depth + 1 < MAX_DEPTH) queue.push({ id: item.id, path: itemPath, depth: current.depth + 1 });
 				else truncated = true;
 				continue;
@@ -60,6 +64,7 @@ export async function scanSourceFolder(folderId: number) {
 				name: item.name,
 				path: itemPath,
 				group: current.path ? current.path.split('/')[0] : '',
+				parentId: current.id,
 				size: item.size ?? 0,
 				importable: isImportable(item.name)
 			});
@@ -67,7 +72,7 @@ export async function scanSourceFolder(folderId: number) {
 	}
 
 	files.sort((a, b) => a.path.localeCompare(b.path, 'fr', { numeric: true }));
-	return { folder: { id: folderId, name: String(folder?.name ?? '') }, files, truncated };
+	return { folder: { id: folderId, name: String(folder?.name ?? '') }, files, dirs, truncated };
 }
 
 export async function downloadSourceFile(fileId: number) {

@@ -4,6 +4,7 @@
 	import type { IntrState } from '$lib/app/state.svelte';
 	import DateInput from '$lib/components/DateInput.svelte';
 	import KdriveImport from '$lib/components/KdriveImport.svelte';
+	import KdriveOrganize from '$lib/components/KdriveOrganize.svelte';
 	import YearPicker from '$lib/components/YearPicker.svelte';
 	import { formatCurrency, formatNumber, formatPreciseCurrency } from '$lib/format';
 	import { ANNEXES, RULES } from '$lib/rules';
@@ -266,6 +267,7 @@
 		</div>
 
 		<KdriveImport {state} />
+		<KdriveOrganize {state} />
 
 		<div class="sync-card">
 			<div class="panel-heading">

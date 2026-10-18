@@ -8,6 +8,7 @@ import type {
 	FutureContractAmountType,
 	IntermittencePeriod,
 	KdriveImport,
+	KdriveMove,
 	MonthlyInfo,
 	Project
 } from '$lib/types';
@@ -77,6 +78,7 @@ export function createDefaultData(): AppData {
 		futureContracts: [],
 		monthlyInfos: [],
 		kdriveImports: [],
+		kdriveMoves: [],
 		settings: {
 			referenceStartDate: `${new Date().getFullYear()}-01-01`,
 			targetHours: 507,
@@ -284,6 +286,21 @@ function normalizeAnniversaries(value: unknown): Record<string, string> {
 	);
 }
 
+function normalizeKdriveMove(item: Partial<KdriveMove>): KdriveMove {
+	return {
+		batchId: cleanString(item.batchId),
+		fileId: normalizeNumber(item.fileId),
+		fromParentId: normalizeNumber(item.fromParentId),
+		fromName: cleanString(item.fromName),
+		fromPath: cleanString(item.fromPath),
+		toParentId: normalizeNumber(item.toParentId),
+		toName: cleanString(item.toName),
+		toPath: cleanString(item.toPath),
+		at: cleanString(item.at),
+		undone: Boolean(item.undone)
+	};
+}
+
 function normalizeKdriveImport(item: Partial<KdriveImport>): KdriveImport {
 	return {
 		fileId: normalizeNumber(item.fileId),
@@ -314,6 +331,9 @@ export function normalizeData(input: Partial<AppData>): AppData {
 			: [],
 		monthlyInfos: Array.isArray(input.monthlyInfos)
 			? input.monthlyInfos.map(normalizeMonthlyInfo).filter((info) => info.month)
+			: [],
+		kdriveMoves: Array.isArray(input.kdriveMoves)
+			? input.kdriveMoves.map(normalizeKdriveMove).filter((item) => item.fileId > 0).slice(-2000)
 			: [],
 		kdriveImports: Array.isArray(input.kdriveImports)
 			? input.kdriveImports.map(normalizeKdriveImport).filter((item) => item.fileId > 0)

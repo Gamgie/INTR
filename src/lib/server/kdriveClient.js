@@ -6,6 +6,8 @@
 //   upload    POST   https://api.infomaniak.com/3/drive/{drive}/upload?directory_id&file_name&total_size
 //   download  GET    https://api.infomaniak.com/2/drive/{drive}/files/{file}/download
 //   trash     DELETE https://api.infomaniak.com/2/drive/{drive}/files/{file}
+//   move      POST   https://api.infomaniak.com/3/drive/{drive}/files/{file}/move/{dest}
+//   rename    POST   https://api.infomaniak.com/2/drive/{drive}/files/{file}/rename { name }
 // Replacing an existing file's content uses `file_id` on upload (as kdrive-fuse does), which keeps
 // kDrive's version history instead of creating a duplicate.
 
@@ -191,6 +193,29 @@ export class KdriveClient {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/octet-stream' },
 				body: /** @type {BodyInit} */ (/** @type {unknown} */ (data))
+			})
+		).data;
+	}
+
+	/**
+	 * Moves a file or folder into another folder (same endpoint as Infomaniak's MCP server).
+	 * @param {number | string} fileId @param {number | string} destinationId
+	 */
+	async move(fileId, destinationId) {
+		return (
+			await this.json(`${API}/3/drive/${this.driveId}/files/${fileId}/move/${destinationId}`, {
+				method: 'POST'
+			})
+		).data;
+	}
+
+	/** @param {number | string} fileId @param {string} name */
+	async rename(fileId, name) {
+		return (
+			await this.json(`${API}/2/drive/${this.driveId}/files/${fileId}/rename`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ name })
 			})
 		).data;
 	}
