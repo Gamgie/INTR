@@ -134,12 +134,12 @@ try {
 	for (const text of [pageTexts[0], pageTexts[2]]) single.addPage([595, 842]).drawText(text, { x: 20, y: 800, size: 8, font });
 	assert.equal((await parts.splitIntoBundles('Paie.pdf', Buffer.from(await single.save()))).length, 1);
 
-	// Repas : retirés du net payé (« 2 Défraiement repas 20,7 20,70 41,40 »).
+	// Repas : le net reste le net payé du bulletin, repas compris ; les repas sont notés à part.
 	const meals = m.readFigures(
 		ghs('2 Cachet(s) 121,34 242,68 MONTANT NET SOCIAL 183,59 2 Défraiement repas 20,7 20,70 41,40', 'Heures 16,00 16,00', { gross: '242,68', nap: '224,99', paid: '224,99' }),
 		'Fiche de paie'
 	);
-	assert.deepEqual([meals.netSalary, meals.allowances], [183.59, 41.4]);
+	assert.deepEqual([meals.netSalary, meals.allowances], [224.99, 41.4]);
 
 	// Emploi lu sur l'AEM, et annexe qui en découle.
 	assert.equal(m.readFigures(aem('3 3', '432,00'), 'AEM').job, 'Artiste visuel');

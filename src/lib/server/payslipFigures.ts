@@ -51,22 +51,19 @@ function readGhsPayslip(text: string): Figures {
 		first(text, new RegExp(String.raw`MONTANT BRUT ${money}`, 'i')) ??
 		first(text, new RegExp(String.raw`Salaire brut ${money}`, 'i'));
 	figures.netSocial = first(text, new RegExp(String.raw`MONTANT NET SOCIAL ${money}`, 'i'));
-	// Le net payé (virement), comme dans le classeur de Clément : après impôt à la source.
+	// Le net retenu est le « Net payé » du bulletin, tel quel (virement reçu, après impôt à la
+	// source, défraiements repas compris). Les repas ne comptent ni dans le brut ni dans les heures.
 	figures.netSalary =
 		first(text, new RegExp(String.raw`${money} ?€ ?Total versé`, 'i')) ??
 		first(text, new RegExp(String.raw`Net payé ${money} ?€`, 'i')) ??
 		first(text, new RegExp(String.raw`NET A PAYER AVANT IMPOT SUR LE REVENU ${money}`, 'i')) ??
 		figures.netSocial;
-	// Les défraiements (repas) sont versés avec le salaire mais ne comptent pas : on les retire du
-	// net payé. « 2 Défraiement repas 20,7 20,70 41,40 » : nombre × montant unitaire.
+	// Défraiements repas, gardés pour information : « 2 Défraiement repas 20,7 20,70 41,40 ».
 	let allowances = 0;
 	for (const match of text.matchAll(/(?:^|[^\d,])(\d{1,2}) (?:Défraiements?|Indem\.?|Indemnités?) repas\b[^\d]{0,20}(\d{1,3},\d{1,2})/gi)) {
 		allowances += Number(match[1]) * Number(match[2].replace(',', '.'));
 	}
-	if (allowances && figures.netSalary !== undefined && figures.netSalary !== figures.netSocial) {
-		figures.netSalary = Number((figures.netSalary - allowances).toFixed(2));
-		figures.allowances = Number(allowances.toFixed(2));
-	}
+	if (allowances) figures.allowances = Number(allowances.toFixed(2));
 
 	// Récapitulatif « BASE » : la première valeur est celle de la période, la seconde le cumul.
 	const baseHours = first(text, new RegExp(String.raw`\bBASE\b[\s\S]{0,80}?\bHeures (\d+,\d{2})`, 'i'));
