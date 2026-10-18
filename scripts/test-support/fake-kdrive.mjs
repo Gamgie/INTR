@@ -10,6 +10,7 @@ export function startFakeKdrive({ port = 0, driveId = '42', token = 'test-token'
 	const appFolder = { id: nextId++, name: 'INTR', type: 'dir', parent_id: 1 };
 	nodes.set(appFolder.id, appFolder);
 	const stats = { uploads: 0, replaced: 0, downloads: 0, lists: 0 };
+	const state = { token };
 
 	const meta = (n) => ({ id: n.id, name: n.name, type: n.type, size: n.data?.length ?? 0, parent_id: n.parent_id });
 	const send = (res, status, body) => {
@@ -20,7 +21,7 @@ export function startFakeKdrive({ port = 0, driveId = '42', token = 'test-token'
 
 	const server = http.createServer(async (req, res) => {
 		const url = new URL(req.url, 'http://x');
-		if (req.headers.authorization !== `Bearer ${token}`) return send(res, 401, { result: 'error', error: { code: 'not_authorized' } });
+		if (req.headers.authorization !== `Bearer ${state.token}`) return send(res, 401, { result: 'error', error: { code: 'not_authorized', description: 'Authorization required' } });
 		const chunks = [];
 		for await (const c of req) chunks.push(c);
 		const body = Buffer.concat(chunks);
@@ -32,6 +33,9 @@ export function startFakeKdrive({ port = 0, driveId = '42', token = 'test-token'
 			const page = all.slice(start, start + pageSize); // ignores `limit` on purpose: worst case
 			const more = start + pageSize < all.length;
 			return send(res, 200, { result: 'success', data: page.map(meta), has_more: more, cursor: more ? String(start + pageSize) : null });
+		}
+		if (req.method === 'GET' && url.pathname === `/2/drive/${driveId}`) {
+			return send(res, 200, { result: 'success', data: { id: Number(driveId), name: 'kDrive test' } });
 		}
 		if (req.method === 'GET' && (m = url.pathname.match(`^/3/drive/${driveId}/files/(\\d+)$`))) {
 			const n = nodes.get(Number(m[1]));
@@ -101,7 +105,7 @@ export function startFakeKdrive({ port = 0, driveId = '42', token = 'test-token'
 
 	return new Promise((resolve) =>
 		server.listen(port, '127.0.0.1', () =>
-			resolve({ server, port: server.address().port, driveId, token, appFolderId: appFolder.id, nodes, trash, stats, children, addDir, addFile, move })
+			resolve({ server, port: server.address().port, driveId, token, appFolderId: appFolder.id, nodes, trash, stats, children, addDir, addFile, move, setToken: (value) => { state.token = value; } })
 		)
 	);
 }

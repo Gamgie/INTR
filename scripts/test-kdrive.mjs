@@ -229,6 +229,25 @@ try {
 		'originaux intacts'
 	);
 
+	// --- Diagnostic and readable errors ---
+	const diagnostic = await call('/diagnostic');
+	const diagnosticHtml = await diagnostic.text();
+	assert.equal(diagnostic.status, 200);
+	assert.match(diagnosticHtml, /Tout fonctionne/, 'diagnostic au vert');
+	assert.match(diagnosticHtml, /kDrive test/);
+	assert.ok(!diagnosticHtml.includes(kdrive.token), 'le jeton n’apparaît jamais');
+
+	kdrive.setToken('autre-jeton');
+	const broken = await call('/');
+	const brokenHtml = await broken.text();
+	assert.equal(broken.status, 503, 'erreur lisible au lieu de 500');
+	assert.match(brokenHtml, /kDrive refuse le jeton/);
+	assert.match(brokenHtml, /diagnostic/);
+	const brokenDiagnostic = await (await call('/diagnostic')).text();
+	assert.match(brokenDiagnostic, /Un réglage bloque/);
+	assert.match(brokenDiagnostic, /not_authorized/);
+	kdrive.setToken(kdrive.token);
+
 	console.log(
 		`kDrive storage tests passed (${kdrive.stats.uploads} envois, ${kdrive.stats.downloads} lectures, ${kdrive.stats.lists} listes).`
 	);

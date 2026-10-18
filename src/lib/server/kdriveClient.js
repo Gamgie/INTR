@@ -16,11 +16,54 @@ const API = (globalThis.process?.env?.KDRIVE_API_BASE || 'https://api.infomaniak
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export class KdriveError extends Error {
-	/** @param {string} message @param {number} status */
-	constructor(message, status) {
+	/**
+	 * @param {string} message
+	 * @param {number} status
+	 * @param {{ operation?: string, code?: string, description?: string }} [details]
+	 */
+	constructor(message, status, details = {}) {
 		super(message);
 		this.status = status;
+		this.operation = details.operation ?? '';
+		this.code = details.code ?? '';
+		this.description = details.description ?? '';
 	}
+}
+
+/** Reads kDrive's error envelope { result: 'error', error: { code, description } }. */
+function parseErrorBody(/** @type {string} */ text) {
+	try {
+		const payload = JSON.parse(text);
+		return {
+			code: String(payload?.error?.code ?? ''),
+			description: String(payload?.error?.description ?? '')
+		};
+	} catch {
+		return { code: '', description: text.slice(0, 200) };
+	}
+}
+
+/**
+ * A French explanation of a kDrive failure, safe to show on screen (never contains the token).
+ * @param {unknown} cause
+ */
+export function explainKdriveError(cause) {
+	if (!(cause instanceof KdriveError)) {
+		return cause instanceof Error ? cause.message : String(cause);
+	}
+	const detail = [cause.code, cause.description].filter(Boolean).join(' : ');
+	const where = cause.operation ? ` (${cause.operation})` : '';
+	const hint =
+		cause.status === 401
+			? 'kDrive refuse le jeton : vérifie KDRIVE_TOKEN dans Vercel (jeton copié en entier, pas expiré, pas supprimé).'
+			: cause.status === 403
+				? 'Le jeton est accepté mais n’a pas les droits : il lui faut la portée « drive », et ton compte doit avoir accès à ce kDrive.'
+				: cause.status === 404
+					? 'kDrive ne trouve pas cet élément : vérifie KDRIVE_DRIVE_ID (le nombre après /drive/ dans l’adresse) et KDRIVE_FOLDER_ID (le nombre après /files/).'
+					: cause.status === 429
+						? 'kDrive limite le nombre de requêtes : réessaie dans une minute.'
+						: `kDrive a répondu avec l’erreur ${cause.status}.`;
+	return `${hint}${where}${detail ? ` Détail kDrive : ${detail}.` : ''}`;
 }
 
 export class KdriveClient {
@@ -48,9 +91,11 @@ export class KdriveClient {
 			if (!retryable || attempt >= 4) {
 				if (!response.ok) {
 					const text = await response.text().catch(() => '');
+					const operation = `${init.method ?? 'GET'} ${new URL(url).pathname}`;
 					throw new KdriveError(
-						`kDrive ${init.method ?? 'GET'} ${new URL(url).pathname} : ${response.status} ${text.slice(0, 300)}`,
-						response.status
+						`kDrive ${operation} : ${response.status} ${text.slice(0, 300)}`,
+						response.status,
+						{ operation, ...parseErrorBody(text) }
 					);
 				}
 				return response;
@@ -66,7 +111,11 @@ export class KdriveClient {
 		const response = await this.raw(url, init);
 		const payload = await response.json();
 		if (payload?.result && payload.result !== 'success') {
-			throw new KdriveError(`kDrive : ${JSON.stringify(payload.error ?? payload).slice(0, 300)}`, 400);
+			throw new KdriveError(`kDrive : ${JSON.stringify(payload.error ?? payload).slice(0, 300)}`, 400, {
+				operation: `${init?.method ?? 'GET'} ${new URL(url).pathname}`,
+				code: String(payload?.error?.code ?? ''),
+				description: String(payload?.error?.description ?? '')
+			});
 		}
 		return payload;
 	}
@@ -90,6 +139,11 @@ export class KdriveClient {
 			cursor = payload.cursor;
 		}
 		return items;
+	}
+
+	/** The drive itself: checks the token and the drive id. */
+	async drive() {
+		return (await this.json(`${API}/2/drive/${this.driveId}`)).data;
 	}
 
 	/** @param {number | string} fileId */
