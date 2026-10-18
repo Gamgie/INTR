@@ -29,6 +29,7 @@ try {
 		[cachets.hours, cachets.cachets, cachets.grossSalary, cachets.netSalary, cachets.netSocial, cachets.startDate],
 		[36, 3, 306.2, 234.85, 237.09, '2026-06-02']
 	);
+	assert.equal(cachets.employerCost, 499, 'total versé par l’employeur');
 
 	// Journées et cachets, récapitulatif sans les cachets : 4 × 6 h + 3 cachets = 60 h.
 	const mixed = m.readFigures(
@@ -86,10 +87,10 @@ try {
 
 	// Bulletin Lit Up : la ligne du mois commence par les heures et finit par le net à payer.
 	const litUp = m.readFigures(
-		"BULLETIN DE PAIE Le net imposable à déclarer est indiqué dans le cadre ci-dessus sur la ligne cumul. 24,00 378,00 260,00 62,56 204,88 145,76 145,76 62,56 260,00 378,00 24,00 197,44 SARL IMAGINAIRE 01/10/2021 au 02/10/2021",
+		"BULLETIN DE PAIE Le net imposable à déclarer est indiqué dans le cadre ci-dessus sur la ligne cumul. 24,00 378,00 260,00 62,56 204,88 145,76 145,76 62,56 260,00 378,00 24,00 197,44 SARL IMAGINAIRE 01/10/2021 au 02/10/2021 Total versé par l'em ployeur Allégem ent de cotisations 405,76 20,28",
 		'Fiche de paie'
 	);
-	assert.deepEqual([litUp.hours, litUp.grossSalary, litUp.netSalary, litUp.startDate], [24, 260, 197.44, '2021-10-01']);
+	assert.deepEqual([litUp.hours, litUp.grossSalary, litUp.netSalary, litUp.startDate, litUp.employerCost], [24, 260, 197.44, '2021-10-01', 405.76]);
 
 	// Recalcul d'un contrat payé sur deux bulletins, avec une copie en double du premier.
 	const doc = (id, kind, text) => ({ id, kind, extractedTextPreview: text });

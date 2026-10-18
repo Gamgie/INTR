@@ -294,6 +294,9 @@ export function createIntrState(initialData: AppData) {
 	);
 	let totalNet = $derived(monthlyStats.reduce((total, stats) => total + stats.netSalary, 0));
 	let totalGross = $derived(monthlyStats.reduce((total, stats) => total + stats.grossSalary, 0));
+	let totalEmployerCost = $derived(
+		monthlyStats.reduce((total, stats) => total + stats.employerCost, 0)
+	);
 	let totalContributions = $derived(
 		monthlyStats.reduce((total, stats) => total + stats.contributions, 0)
 	);
@@ -1276,6 +1279,9 @@ export function createIntrState(initialData: AppData) {
 		},
 		get totalGross() {
 			return totalGross;
+		},
+		get totalEmployerCost() {
+			return totalEmployerCost;
 		},
 		get totalContributions() {
 			return totalContributions;

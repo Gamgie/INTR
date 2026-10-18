@@ -277,6 +277,7 @@ export function buildMonthlyStats(data: AppData): MonthlyStats[] {
 			taxableNetSalary: 0,
 			grossSalary: 0,
 			contributions: 0,
+			employerCost: 0,
 			contributionRate: 0,
 			netHourlyRate: 0,
 			grossHourlyRate: 0,
@@ -308,6 +309,7 @@ export function buildMonthlyStats(data: AppData): MonthlyStats[] {
 			stats.taxableNetSalary += contract.taxableNetSalary * split.ratio;
 			stats.grossSalary += contract.grossSalary * split.ratio;
 			stats.contributions += contract.contributions * split.ratio;
+			stats.employerCost += (contract.employerCost ?? 0) * split.ratio;
 			stats.contractCount += split.ratio;
 		}
 	}
@@ -334,6 +336,7 @@ export function buildMonthlyStats(data: AppData): MonthlyStats[] {
 				taxableNetSalary: round(stats.taxableNetSalary),
 				grossSalary: round(stats.grossSalary),
 				contributions: round(stats.contributions),
+				employerCost: round(stats.employerCost),
 				contributionRate:
 					stats.grossSalary > 0 ? round((stats.contributions / stats.grossSalary) * 100, 1) : 0,
 				netHourlyRate: stats.hours > 0 ? round(stats.netSalary / stats.hours) : 0,

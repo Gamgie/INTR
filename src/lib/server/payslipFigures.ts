@@ -18,6 +18,8 @@ export type Figures = {
 	netSalary?: number;
 	netSocial?: number;
 	allowances?: number;
+	/** « Total versé par l'employeur ». */
+	employerCost?: number;
 	/** Emploi déclaré sur l'AEM (« Artiste visuel », « Technicien vidéo »). */
 	job?: string;
 };
@@ -58,6 +60,7 @@ function readGhsPayslip(text: string): Figures {
 		first(text, new RegExp(String.raw`Net payé ${money} ?€`, 'i')) ??
 		first(text, new RegExp(String.raw`NET A PAYER AVANT IMPOT SUR LE REVENU ${money}`, 'i')) ??
 		figures.netSocial;
+	figures.employerCost = first(text, new RegExp(String.raw`Total versé par l'?\s?employeur\s*${money} ?€`, 'i'));
 	// Défraiements repas, gardés pour information : « 2 Défraiement repas 20,7 20,70 41,40 ».
 	let allowances = 0;
 	for (const match of text.matchAll(/(?:^|[^\d,])(\d{1,2}) (?:Défraiements?|Indem\.?|Indemnités?) repas\b[^\d]{0,20}(\d{1,3},\d{1,2})/gi)) {
@@ -152,7 +155,8 @@ function readLitUpPayslip(text: string): Figures | undefined {
 		format: 'bulletin Lit Up',
 		hours: values[0],
 		grossSalary: values[2],
-		netSalary: values[values.length - 1]
+		netSalary: values[values.length - 1],
+		employerCost: first(text, new RegExp(String.raw`Total versé par l'em ?ployeur\D{0,40}?${money}`, 'i'))
 	};
 	const period = text.match(/(\d{2})\/(\d{2})\/(\d{4}) au (\d{2})\/(\d{2})\/(\d{4})/);
 	if (period) {
@@ -226,6 +230,11 @@ export function consolidateContract(contract: Contract, documents: ContractDocum
 	if (grossSource.some((figures) => figures.grossSalary)) {
 		fields.grossSalary = sum(grossSource.map((figures) => figures.grossSalary));
 		sources.push(`brut : ${grossSource[0].format}`);
+	}
+
+	if (payslips.some((figures) => figures.employerCost)) {
+		fields.employerCost = sum(payslips.map((figures) => figures.employerCost));
+		sources.push('coût employeur : bulletin');
 	}
 
 	if (payslips.some((figures) => figures.netSalary)) {

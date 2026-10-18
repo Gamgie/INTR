@@ -187,6 +187,7 @@ function normalizeContract(contract: Partial<Contract>): Contract {
 		taxableNetSalary: normalizeNumber(contract.taxableNetSalary),
 		grossSalary: normalizeNumber(contract.grossSalary),
 		contributions: normalizeNumber(contract.contributions),
+		employerCost: normalizeNumber(contract.employerCost),
 		netHourlyRate: normalizeNumber(contract.netHourlyRate || fields.netHourlyRate),
 		grossHourlyRate: normalizeNumber(contract.grossHourlyRate || fields.grossHourlyRate),
 		status:

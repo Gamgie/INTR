@@ -21,6 +21,7 @@
 		<span>Net total</span>
 		<strong>{formatCurrency(state.totalNet)}</strong>
 		<small>Brut {formatCurrency(state.totalGross)}</small>
+		<small>Coût employeur {formatCurrency(state.totalEmployerCost)}</small>
 	</div>
 	<div class="metric">
 		<span>Cotisations</span>

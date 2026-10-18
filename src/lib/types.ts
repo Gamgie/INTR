@@ -70,6 +70,8 @@ export type ContractFields = {
 	taxableNetSalary: number;
 	grossSalary: number;
 	contributions: number;
+	/** Total versé par l'employeur (bulletin) : brut + cotisations patronales. */
+	employerCost?: number;
 	netHourlyRate: number;
 	grossHourlyRate: number;
 	status: ContractStatus;
@@ -214,6 +216,7 @@ export type MonthlyStats = {
 	taxableNetSalary: number;
 	grossSalary: number;
 	contributions: number;
+	employerCost: number;
 	contributionRate: number;
 	netHourlyRate: number;
 	grossHourlyRate: number;

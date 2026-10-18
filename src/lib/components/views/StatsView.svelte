@@ -47,6 +47,7 @@
 			taxableNetSalary: 0,
 			grossSalary: 0,
 			contributions: 0,
+			employerCost: 0,
 			contributionRate: 0,
 			netHourlyRate: 0,
 			grossHourlyRate: 0,
@@ -160,7 +161,6 @@
 					<th>% Cot.</th>
 					<th>Taux net</th>
 					<th>AJ</th>
-					<th>Indem. réelle</th>
 					<th>Total réel</th>
 				</tr>
 			</thead>
@@ -184,13 +184,12 @@
 						<td>{formatNumber(stats.contributionRate, 1)} %</td>
 						<td>{formatPreciseCurrency(stats.netHourlyRate)}</td>
 						<td>{formatPreciseCurrency(stats.estimatedDailyAllowance)}</td>
-						<td>{formatCurrency(stats.realIndemnity)}</td>
 						<td>{formatCurrency(stats.totalIncomeReal)}</td>
 					</tr>
 					{#if isMonthOpen(stats.month)}
 						{@const contracts = monthContracts(stats.month)}
 						<tr class="month-detail-row">
-							<td colspan="12">
+							<td colspan="11">
 								<div class="month-contracts" transition:slide={{ duration: 160 }}>
 									{#if contracts.length > 0}
 										<table class="nested-table">
