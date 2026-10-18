@@ -390,6 +390,33 @@ nav button.active,
 	gap: 16px;
 }
 
+.topbar-title {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	min-width: 0;
+}
+
+.back-button {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	min-height: 40px;
+	padding: 0 12px 0 8px;
+	border: 1px solid rgba(237, 241, 238, 0.16);
+	border-radius: 999px;
+	background: rgba(237, 241, 238, 0.06);
+	color: inherit;
+	font: inherit;
+	cursor: pointer;
+	transition: background 160ms ease;
+}
+
+.back-button:hover,
+.back-button:focus-visible {
+	background: rgba(237, 241, 238, 0.14);
+}
+
 .eyebrow {
 	margin-bottom: 3px;
 	font-size: 12px;

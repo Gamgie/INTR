@@ -10,7 +10,18 @@ declare global {
 			authenticated: boolean;
 		}
 		// interface PageData {}
-		// interface PageState {}
+		interface PageState {
+			/** Rubrique et fiches ouvertes, pour la flèche retour. */
+			intrPlace?: {
+				tab: string;
+				contract: string;
+				company: string;
+				project: string;
+				companyEdit: string;
+				month: string;
+			};
+			intrDepth?: number;
+		}
 		// interface Platform {}
 	}
 }
