@@ -72,8 +72,10 @@
 
 	function contractMatchesSelectedPeriod(contract: Contract) {
 		if (selectedContractsPeriodKey === 'all') return true;
-		// Un contrat sans date (tout juste créé) reste visible pour qu'on puisse le remplir.
-		if (!contract.startDate && !contract.endDate) return true;
+		// Un contrat sans date n'apparaît que dans « Toutes », sauf celui qu'on vient de créer
+		// (sélectionné), pour pouvoir le remplir.
+		if (!contract.startDate && !contract.endDate)
+			return contract.id === appState.selectedContractId;
 
 		if (selectedContractsPeriodKey.startsWith('year:')) {
 			return contractYear(contract) === selectedContractsPeriodKey.slice(5);
