@@ -5,10 +5,21 @@
 	import DocumentPresence from '$lib/components/DocumentPresence.svelte';
 	import ImportFeedback from '$lib/components/ImportFeedback.svelte';
 	import { formatCurrency, formatDate, formatNumber } from '$lib/format';
-	import type { Contract, IntermittencePeriod } from '$lib/types';
+	import type { Contract } from '$lib/types';
+	import { currentIntermittenceYear, intermittenceYears, yearOfDate } from '$lib/years';
 
 	let { state: appState }: { state: IntrState } = $props();
-	let selectedContractsPeriodKey = $state('all');
+	// Par défaut, l'année d'intermittence en cours (comme l'Historique et le tableau de bord).
+	// « current » suit l'année en cours, recalculée quand les données arrivent.
+	let chosenPeriodKey = $state('current');
+	let selectedContractsPeriodKey = $derived(
+		chosenPeriodKey === 'current'
+			? `inter:${currentIntermittenceYear(appState.appData).year}`
+			: chosenPeriodKey
+	);
+	let contractIntermittenceYears = $derived(
+		intermittenceYears(appState.appData).filter((year) => !year.isFuture)
+	);
 
 	let contractCalendarYears = $derived(
 		[
@@ -44,11 +55,6 @@
 		}
 	});
 
-	function parseDate(value: string) {
-		const date = new Date(`${value}T00:00:00`);
-		return Number.isNaN(date.getTime()) ? undefined : date;
-	}
-
 	function contractSortKey(contract: Contract) {
 		return contract.startDate || contract.endDate || contract.createdAt || '';
 	}
@@ -64,35 +70,21 @@
 		return (contract.startDate || contract.endDate || contract.createdAt || '').slice(0, 4);
 	}
 
-	function periodStart(period: IntermittencePeriod) {
-		return parseDate(period.indemnizationStartDate || period.referenceStartDate);
-	}
-
-	function periodEnd(period: IntermittencePeriod) {
-		return parseDate(period.anniversaryDate || period.referenceEndDate);
-	}
-
-	function isContractInsidePeriod(contract: Contract, period: IntermittencePeriod) {
-		const start = parseDate(contract.startDate);
-		if (!start) return false;
-
-		const end = parseDate(contract.endDate) ?? start;
-		const startLimit = periodStart(period);
-		const endLimit = periodEnd(period);
-
-		return (!endLimit || start <= endLimit) && (!startLimit || end >= startLimit);
-	}
-
 	function contractMatchesSelectedPeriod(contract: Contract) {
 		if (selectedContractsPeriodKey === 'all') return true;
+		// Un contrat sans date (tout juste créé) reste visible pour qu'on puisse le remplir.
+		if (!contract.startDate && !contract.endDate) return true;
 
 		if (selectedContractsPeriodKey.startsWith('year:')) {
 			return contractYear(contract) === selectedContractsPeriodKey.slice(5);
 		}
 
-		const periodId = selectedContractsPeriodKey.replace(/^period:/, '');
-		const period = appState.appData.periods.find((item) => item.id === periodId);
-		return period ? isContractInsidePeriod(contract, period) : true;
+		if (selectedContractsPeriodKey.startsWith('inter:')) {
+			const date = contract.startDate || contract.endDate;
+			return yearOfDate(appState.appData, date) === Number(selectedContractsPeriodKey.slice(6));
+		}
+
+		return true;
 	}
 
 	function updateSelectedContractCompany(companyId: string) {
@@ -124,12 +116,17 @@
 			<div class="button-row">
 				<label class="compact-select">
 					<span>Année</span>
-					<select bind:value={selectedContractsPeriodKey}>
+					<select
+						value={selectedContractsPeriodKey}
+						onchange={(event) => (chosenPeriodKey = event.currentTarget.value)}
+					>
 						<option value="all">Toutes</option>
-						{#if appState.appData.periods.length}
+						{#if contractIntermittenceYears.length}
 							<optgroup label="Intermittence">
-								{#each appState.appData.periods as period}
-									<option value={`period:${period.id}`}>{period.label}</option>
+								{#each contractIntermittenceYears as year (year.key)}
+									<option value={`inter:${year.year}`}>
+										{year.year}{year.isCurrent ? ' (en cours)' : ''}
+									</option>
 								{/each}
 							</optgroup>
 						{/if}
