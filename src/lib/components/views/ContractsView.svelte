@@ -17,6 +17,28 @@
 			? `inter:${currentIntermittenceYear(appState.appData).year}`
 			: chosenPeriodKey
 	);
+	// Sur grand écran, la liste descend jusqu'en bas de la fenêtre et reste en vue au défilement.
+	let listPanel: HTMLElement | undefined = $state();
+	let listPanelHeight = $state(0);
+	$effect(() => {
+		if (!listPanel) return;
+		const margin = 18;
+		const measure = () => {
+			if (window.innerWidth <= 1080) {
+				listPanelHeight = 0;
+				return;
+			}
+			const top = Math.max(margin, listPanel!.getBoundingClientRect().top);
+			listPanelHeight = Math.max(320, window.innerHeight - top - margin);
+		};
+		measure();
+		window.addEventListener('scroll', measure, { passive: true });
+		window.addEventListener('resize', measure);
+		return () => {
+			window.removeEventListener('scroll', measure);
+			window.removeEventListener('resize', measure);
+		};
+	});
 	let contractIntermittenceYears = $derived(
 		intermittenceYears(appState.appData).filter((year) => !year.isFuture)
 	);
@@ -112,7 +134,11 @@
 </script>
 
 <section class="view-grid contract-layout">
-	<section class="panel list-panel">
+	<section
+		class="panel list-panel"
+		bind:this={listPanel}
+		style:height={listPanelHeight ? `${listPanelHeight}px` : undefined}
+	>
 		<div class="panel-heading">
 			<h3>Contrats</h3>
 			<div class="button-row">

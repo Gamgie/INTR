@@ -491,6 +491,27 @@ progress::-webkit-progress-value {
 
 .contract-layout {
 	grid-template-columns: 400px minmax(0, 1fr);
+	align-items: start;
+}
+
+/* La liste des contrats occupe toute la hauteur visible (hauteur posée par ContractsView). */
+@media (min-width: 1081px) {
+	.contract-layout > .list-panel {
+		position: sticky;
+		top: 18px;
+		display: flex;
+		flex-direction: column;
+	}
+
+	.contract-layout > .list-panel > * {
+		flex: none;
+	}
+
+	.contract-layout > .list-panel > .list {
+		flex: 1 1 auto;
+		min-height: 0;
+		max-height: none;
+	}
 }
 
 .panel {
