@@ -1,4 +1,3 @@
-
 import { error, json, type RequestHandler } from '@sveltejs/kit';
 
 import { normalizeCompanyColor } from '$lib/companyColors';
@@ -334,10 +333,13 @@ function mergeFields(fields: Partial<ContractFields>[]) {
 function findDocumentConflicts(
 	existingDocuments: ContractDocument[],
 	document: ContractDocument,
-	contractId: string
+	contractId: string,
+	contracts: AppData['contracts']
 ) {
 	const notes: string[] = [];
 	let duplicate = false;
+	// Copies orphelines (rattachées à aucun contrat) : remplacées par le document reçu.
+	const orphanIds: string[] = [];
 
 	for (const existing of existingDocuments) {
 		const sameFile =
@@ -347,8 +349,17 @@ function findDocumentConflicts(
 		const sameContract = existing.contractId === contractId;
 
 		if (sameFile && sameKind && existing.size === document.size) {
+			const owner = contracts.find((contract) => contract.documentIds.includes(existing.id));
+			if (!owner) {
+				orphanIds.push(existing.id);
+				continue;
+			}
 			duplicate = true;
-			notes.push(`Doublon ignoré: ${document.fileName} existe déjà.`);
+			notes.push(
+				owner.id === contractId
+					? `Doublon ignoré : ${document.fileName} est déjà dans ce contrat.`
+					: `Doublon ignoré : ${document.fileName} est déjà rattaché au contrat « ${owner.title} ».`
+			);
 			continue;
 		}
 
@@ -380,7 +391,7 @@ function findDocumentConflicts(
 		}
 	}
 
-	return { duplicate, notes };
+	return { duplicate, notes, orphanIds };
 }
 
 async function proxyToRemote(
@@ -541,6 +552,7 @@ async function importDocument({ request, url }: Parameters<RequestHandler>[0]) {
 
 	let resolvedContractId = contractId;
 	let createdNewContract = false;
+	let acceptedCount = 0;
 	let missingCompanySirets: string[] = [];
 
 	const combinedFields = mergeFields(preparedDocuments.map((document) => document.extractedFields));
@@ -645,10 +657,20 @@ async function importDocument({ request, url }: Parameters<RequestHandler>[0]) {
 				}
 				mergeAppliedFields(appliedFields, mergeDetectedFields(contract, document.extractedFields));
 
-				const conflicts = findDocumentConflicts(current.documents, document, contract.id);
+				const conflicts = findDocumentConflicts(
+					current.documents,
+					document,
+					contract.id,
+					current.contracts
+				);
 				if (conflicts.notes.length) {
 					document.analysisNotes = [...document.analysisNotes, ...conflicts.notes];
 					notes.push(...conflicts.notes);
+				}
+				if (conflicts.orphanIds.length) {
+					current.documents = current.documents.filter(
+						(existing) => !conflicts.orphanIds.includes(existing.id)
+					);
 				}
 				if (!conflicts.duplicate) acceptedDocuments.push(document);
 			}
@@ -692,6 +714,7 @@ async function importDocument({ request, url }: Parameters<RequestHandler>[0]) {
 			}
 		}
 
+		acceptedCount = acceptedDocuments.length;
 		current.documents = [...acceptedDocuments, ...current.documents];
 		if (contract) {
 			contract.documentIds = [
@@ -820,14 +843,31 @@ async function importDocument({ request, url }: Parameters<RequestHandler>[0]) {
 	// Le kDrive fait foi : un document envoyé directement à l'app (pas depuis kDrive) y est
 	// rangé à sa place, puis noté comme importé pour ne pas être relu une seconde fois.
 	let sourceNote = '';
-	if (String(form.get('origin') ?? '') !== 'kdrive' && kdriveConfigured() && data.settings.kdriveSourceFolder) {
+	if (
+		String(form.get('origin') ?? '') !== 'kdrive' &&
+		kdriveConfigured() &&
+		data.settings.kdriveSourceFolder
+	) {
 		const contract = data.contracts.find((item) => item.id === resolvedContractId);
-		if (contract && preparedDocuments.length) {
+		// Un doublon ignoré n'est pas rangé une seconde fois : son original est déjà en place.
+		if (contract && preparedDocuments.length && acceptedCount > 0) {
 			try {
 				const extension = file.name.match(/\.[a-z0-9]{2,4}$/i)?.[0]?.toLowerCase() ?? '.pdf';
-				const place = sourcePlace(data, contract, preparedDocuments.map((document) => document.kind), extension);
-				const saved = await saveToSource(data.settings.kdriveSourceFolder, place.folders, place.name, new Uint8Array(buffer));
-				sourceNote = saved.created ? `Original rangé dans kDrive : ${saved.path}.` : `Original déjà dans kDrive : ${saved.path}.`;
+				const place = sourcePlace(
+					data,
+					contract,
+					preparedDocuments.map((document) => document.kind),
+					extension
+				);
+				const saved = await saveToSource(
+					data.settings.kdriveSourceFolder,
+					place.folders,
+					place.name,
+					new Uint8Array(buffer)
+				);
+				sourceNote = saved.created
+					? `Original rangé dans kDrive : ${saved.path}.`
+					: `Original déjà dans kDrive : ${saved.path}.`;
 				const documentIds = preparedDocuments.map((document) => document.id);
 				data = await mutateData((current) => {
 					current.kdriveImports = [

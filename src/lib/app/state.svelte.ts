@@ -82,6 +82,7 @@ type DocumentUploadPayload = {
 	companySuggestions: CompanySuggestion[];
 	analysis: { notes: string[] };
 	message?: string;
+	routedContractId?: string;
 };
 
 type DocumentImportPayload = DocumentUploadPayload & {
@@ -308,7 +309,8 @@ export function createIntrState(initialData: AppData) {
 		}
 		changeRevision += 1;
 		dirty = true;
-		if (saveState === 'saved' || saveState === 'error' || saveState === 'reloaded') saveState = 'idle';
+		if (saveState === 'saved' || saveState === 'error' || saveState === 'reloaded')
+			saveState = 'idle';
 	}
 
 	function ensureMonthlyInfo(month: string): MonthlyInfo {
@@ -713,7 +715,19 @@ export function createIntrState(initialData: AppData) {
 		mergeCompanySuggestions(payload.companySuggestions);
 		dirty = false;
 		saveState = 'saved';
-		uploadState[contract.id] = `${file.name} importé et analysé.`;
+		// Un doublon ou un document parti vers un autre contrat se dit, au lieu d'un « importé » trompeur.
+		const warnings = (payload.analysis?.notes ?? []).filter((note) =>
+			/doublon|employeur différent/i.test(note)
+		);
+		const routedElsewhere =
+			payload.routedContractId && payload.routedContractId !== contract.id
+				? `${file.name} rattaché au contrat « ${
+						appData.contracts.find((item) => item.id === payload.routedContractId)?.title ?? 'autre'
+					} ».`
+				: '';
+		uploadState[contract.id] =
+			[...warnings, routedElsewhere].filter(Boolean).join(' ') ||
+			`${file.name} importé et analysé.`;
 	}
 
 	function importFieldLabels(fields: Partial<ContractFields>) {

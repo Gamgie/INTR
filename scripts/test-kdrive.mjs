@@ -261,6 +261,30 @@ try {
 		assert.ok(stored && pathOf(stored).startsWith('2026/05/'), `fichier dans kDrive (${stored && pathOf(stored)})`);
 		const data = await (await call('/api/data')).json();
 		assert.ok(data.kdriveImports.some((record) => record.fileId === stored.id), 'noté comme importé');
+
+		// Même fichier renvoyé : doublon signalé avec son contrat, rien de rangé une seconde fois.
+		const bytes = await scannedContractPdf('Compagnie Rangee', 0, 5, 3);
+		const again = await importFile('envoi-direct.pdf', bytes);
+		const duplicateNote = again.analysis.notes.find((text) => text.startsWith('Doublon ignoré'));
+		assert.ok(duplicateNote?.includes('Compagnie Rangee') || duplicateNote?.includes('déjà dans ce contrat'), `doublon nommé (${duplicateNote})`);
+		assert.ok(!again.analysis.notes.some((text) => text.startsWith('Original')), 'doublon non rangé à nouveau');
+
+		// Copie orpheline (rattachée à aucun contrat) : le renvoi la remplace et la rattache.
+		const before = await (await call('/api/data')).json();
+		const orphan = before.documents.find((document) => document.fileName === 'envoi-direct.pdf');
+		for (const contract of before.contracts) contract.documentIds = contract.documentIds.filter((id) => id !== orphan.id);
+		const detached = await call('/api/data', {
+			method: 'PUT',
+			body: JSON.stringify(before),
+			headers: { 'content-type': 'application/json' }
+		});
+		assert.equal(detached.status, 200);
+		const reattached = await importFile('envoi-direct.pdf', bytes);
+		assert.ok(!reattached.analysis.notes.some((text) => text.startsWith('Doublon')), 'copie orpheline : pas un doublon');
+		const after = reattached.data;
+		const copies = after.documents.filter((document) => document.fileName === 'envoi-direct.pdf');
+		assert.equal(copies.length, 1, 'orpheline remplacée');
+		assert.ok(after.contracts.some((contract) => contract.documentIds.includes(copies[0].id)), 'document rattaché');
 	}
 
 	// --- Deep tree and pagination (fake kDrive pages by 10) ---
